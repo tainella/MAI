@@ -1,0 +1,2 @@
+# MAI
+Moscow Aviation Institute
