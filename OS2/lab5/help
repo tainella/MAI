@@ -1,3 +1,0 @@
-//настроить поиск библиотеки в каталоге Documents
-LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/Documents/
-export LD_LIBRARY_PATH
