@@ -1,0 +1,403 @@
+\documentclass[pdf, unicode, 12pt, a4paper,oneside,fleqn]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T2B]{fontenc}
+\usepackage[english,russian]{babel}
+
+\frenchspacing
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage[table]{xcolor}
+\usepackage{array}
+\usepackage{color}
+\usepackage{xcolor}
+
+\usepackage{hyperref}
+
+
+\newcommand{\MYhref}[3][blue]{\href{#2}{\color{#1}{#3}}}%
+
+\usepackage{listings}
+\usepackage{alltt}
+\usepackage{csquotes}
+\DeclareQuoteStyle{russian}
+	{\guillemotleft}{\guillemotright}[0.025em]
+	{\quotedblbase}{\textquotedblleft}
+\ExecuteQuoteOptions{style=russian}
+
+\usepackage{graphicx}
+
+\usepackage{listings}
+\lstset{tabsize=2,
+	breaklines,
+	columns=fullflexible,
+	flexiblecolumns,
+	numbers=left,
+	numberstyle={\footnotesize},
+	extendedchars,
+	inputencoding=utf8}
+
+\usepackage{longtable}
+
+\def\@xobeysp{ }
+\def\verbatim@processline{\hspace{1.2cm}\raggedright\the\verbatim@line\par}
+
+\oddsidemargin=-0.4mm
+\textwidth=160mm
+\topmargin=4.6mm
+\textheight=210mm
+
+\parindent=0pt
+\parskip=3pt
+
+\definecolor{lightgray}{gray}{0.9}
+
+
+\renewcommand{\thesubsection}{\arabic{subsection}}
+
+\lstdefinestyle{customc}{
+  belowcaptionskip=1\baselineskip,
+  breaklines=true,
+  frame=L,
+  xleftmargin=\parindent,
+  language=C,
+  showstringspaces=false,
+  basicstyle=\footnotesize\ttfamily,
+  keywordstyle=\bfseries\color{green!40!black},
+  commentstyle=\itshape\color{gray},
+  identifierstyle=\color{black},
+  stringstyle=\color{blue},
+}
+
+\lstdefinestyle{customasm}{
+  belowcaptionskip=1\baselineskip,
+  frame=L,
+  xleftmargin=\parindent,
+  language=[x86masm]Assembler,
+  basicstyle=\footnotesize\ttfamily,
+  commentstyle=\itshape\color{purple!40!black},
+}
+
+\lstset{escapechar=@,style=customc}
+
+
+\newcommand{\CWPHeader}[1]{\addtocounter{section}{-1}\section{#1}}
+
+% Заголовок лабораторной работы.
+% Единственный аргумент --- ее тема
+\newcommand{\CWHeader}[1]{\section*{#1}}
+
+\newcommand{\CWProblem}[1]{\par\textbf{Задача: }#1}
+
+\begin{document}
+\begin{titlepage}
+\begin{center}
+\bfseries
+
+{\Large Московский авиационный институт\\ (национальный исследовательский университет)
+
+}
+
+\vspace{48pt}
+
+{\large Факультет информационных технологий и прикладной математики
+}
+
+\vspace{36pt}
+
+{\large Кафедра вычислительной математики и~программирования
+
+}
+
+
+\vspace{48pt}
+
+Лабораторная работа \textnumero 1 по курсу \enquote{Дискретный анализ}
+
+\end{center}
+
+\vspace{72pt}
+
+\begin{flushright}
+\begin{tabular}{rl}
+Студент: & А.\,В. Полей-Добронравова \\
+Преподаватель: & Д.\,Е. Ильвохин \\
+Группа: & М8О-307Б \\
+Дата: & \\
+Оценка: & \\
+Подпись: & \\
+\end{tabular}
+\end{flushright}
+
+\vfill
+
+\begin{center}
+\bfseries
+Москва, \the\year
+\end{center}
+\end{titlepage}
+
+\pagebreak
+
+\CWHeader{Лабораторная работа \textnumero 1}
+
+\CWProblem{
+Требуется разработать программу, осуществляющую ввод пар \enquote{ключ-значение}, их 
+упорядочивание по возрастанию ключа указанным алгоритмом сортировки за линейное время и вывод отсортированной последовательности.
+
+{\bfseries Вариант сортировки:} Сортировка подсчётом.
+
+{\bfseries Вариант ключа:} { \normalfont\ttfamily Почтовые индексы: шестизначные числа. }
+
+{\bfseries Вариант значения:} { \normalfont\ttfamily Строки фиксированной длины 64 символа, во входных данных могут встретиться строки меньшей длины, при этом строка дополняется до 64-х нулевыми символами, которые не выводятся на экран.}
+}
+\pagebreak
+
+\section{Описание}
+Требуется написать реализацию алгоритма сортировки подсчётом. Используемая память и скорость этой сортировки О(n + k), где n - количество элементов массива, k - максимальный элемент массива. 
+
+Как сказано в \cite{Kormen}: \enquote{основная идея сортировки подсчетом заключается в том, чтобы для каждого входного 
+элемента $x$ определить количество элементов, которые меньше $x$}.
+
+В этом алгоритме используют три массива (вектора): исходный массив А, массив С для подсчета того, сколько раз встретился элемент от 0 до максимального, массив В для промежуточного результата сортировки.  \\
+Сначала следует заполнить массив С нулями, и для каждого A[i] увеличить C[A[i]] на 1. Далее подсчитывается количество элементов меньших или равных k-1. Для этого каждый C[j], начиная с C[1], увеличивают на C[j-1]. Таким образом в последней ячейке будет находиться количество элементов от 0 до k-1 существующих во входном массиве. На последнем шаге алгоритма читается входной массив с конца, значение C[A[i]] уменьшается на 1 и в каждый B[C[A[i]]] записывается A[i]. Алгоритм устойчив.
+
+\pagebreak
+
+\section{Исходный код}
+На каждой непустой строке входного файла располагается пара \enquote{ключ-значение}, поэтому создадим новую 
+структуру $TElement$, в которой будем хранить: index - ключ в первоначальном виде строки из 6 символов, key - целочисленное представление ключа для удобства сортировки по ключу, word - строка значения. \\ TVector это собственная реализация коллеции вектор. Он состоит из вместительности capacity, текущего размера vSize и указателя на последовательно расположенные в памяти элементы вектора data типа TElement. Методы TVector классические, есть метод изменения размера вектора. \\
+Функция CountingSort осуществляет непосредственно сортировку, подходящую только для входных данных варианта. Функция типа void, т.к. изменяет исходный массив в памяти компьютера. Массив В из алгоритма здесь заменяет вектор temp, исходный вектор передается под именем v, вектор c под тем же именем. \\
+В main программы осуществляется формирование исходного вектора. Считываются строки из input длиной максимум 72, записываются в переменную str. Если строка пустая, то условный оператор это видит и продолжает считывание до непустой строки. Далее из этой строки копируются значения нового TElement, считается целочисленное значение ключа. Далее идет вталкивание нового элемента в вектор, очистка вспомогательных строк. После того, как входной файл закончился, идет проверка на то, не пустой ли исходный вектор. Если не пустой, то он передаётся сортировке и выводится на экран. 
+
+\begin{lstlisting}[language=C++]
+#include <iostream>
+#include <cstring>
+
+const int LWORD = 65;
+const int LKEY = 7;
+struct TElement {
+    char index[LKEY] = {};
+    unsigned long long key = 0;
+    char word[LWORD] = {};
+};
+class TVector {
+    size_t vSize;
+    size_t capacity;
+    TElement* data;
+public:
+    TVector() {
+        vSize = 0;
+        capacity = 0;
+        data = new TElement[2]();
+    }
+    TVector(size_t s) {
+        vSize = 0;
+        capacity = s;
+        data = new TElement[s]();
+    }
+    TVector(size_t s, TElement* d) {
+        vSize = s;
+        capacity = s;
+        data = new TElement[s]();
+        if (s != 0) {
+            for (size_t i = 0; i < s; i++) {
+                data[i] = d[i];
+            }
+        }
+    }
+    TElement& operator[] (size_t i) {
+        return data[i];
+    }
+    size_t Size() {
+        return vSize;
+    }
+    size_t Capacity() {
+        return capacity;
+    }
+    void Resize() {
+        if (capacity == 0) {
+            capacity = 1;
+        }
+        capacity *= 2;
+        TElement* temp = new TElement[capacity]();
+         if(temp == 0x0 ) {
+             exit(-1);
+         }
+        for (size_t i = 0; i < vSize; i++) {
+            temp[i] = data[i];
+        }
+        delete [] data;
+        data = temp;
+    }
+    void PushBack(TElement elem) {
+        if (vSize == capacity) {
+            Resize();
+        }
+        data[vSize++] = elem;
+    }
+    ~TVector() {
+        delete [] data;
+    }
+};
+
+void CountingSort(TVector &v) {
+    TVector temp(v.Size());
+    unsigned long long max = v[0].key;
+    int i;
+    for (size_t j = 1; j < v.Size(); j++) {
+        if (v[j].key > max) {
+            max = v[j].key;
+        }
+    }
+    max++;
+    TVector c((size_t)max);
+    for (size_t j = 0; j < c.Capacity(); j++) {
+        c[j].key = 0;
+    }
+    for (size_t j = 0; j < v.Size(); j++) {
+        ++c[v[j].key].key;
+    }
+    for (size_t j = 1; j < c.Capacity(); j++) {
+        c[j].key = c[j].key + c[j - 1].key;
+    }
+    for (int j = v.Size() - 1; j >= 0; j--) {
+        c[v[j].key].key--;
+        temp[c[v[j].key].key] = v[j];
+    }
+    for (size_t m = 0; m < v.Size(); m++) {
+        v[m] = temp[m];
+    }
+}
+
+int main(void) {
+    std::ios::sync_with_stdio(false);
+    TVector dataVector;
+    TElement element;
+    size_t i = 0;
+    char str[72] = {};
+    while (true) {
+        if (std::cin.eof()) {
+            break;
+        }
+        str[0] = '\0';
+        std::cin.getline(str, 72);
+         if (str[0] != '\0') {
+            element.key = 0;
+            for (i = 0; i < 6; i++) {
+                element.index[i] = str[i];
+                element.key = element.key * 10 + str[i] - '0';
+            }
+            i++;
+            for (; i < 72; i++) {
+                if (str[i] == '\0') {
+                    break;
+                }
+                element.word[i - 7] = str[i];
+            }
+            element.word[64] = '\0';
+            element.index[6] = '\0';
+            dataVector.PushBack(element);
+            for (i = 0; i < 72; i++) {
+                str[i] = 0;
+            }
+             for (i = 0; i < 64; i++) {
+                 element.word[i] = 0;
+             }
+             for (i = 0; i < 6; i++) {
+                 element.index[i] = 0;
+             }
+        }
+    }
+    if (dataVector.Size() != 0) {
+        CountingSort(dataVector);
+        for (size_t j = 0; j < dataVector.Size(); j++) {
+            std::cout << dataVector[j].index << "\t"<<  dataVector[j].word << std::endl;
+        }
+    }
+    return 0;
+}
+\end{lstlisting}
+
+\section{Консоль}
+\begin{alltt}
+MacBook-Pro-Amelia:1 amelia$ cat test1.txt
+999999	n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3na
+
+
+011111	n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3naatt
+000000	n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3naatt
+999997	n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3naat
+
+999999	n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3naat
+000100	n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3naa
+999999	n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3na
+MacBook-Pro-Amelia:1 amelia$ ./dat < test1.txt
+000000	n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3naatt
+000100	n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3naa
+011111	n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3naatt
+999997	n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3naat
+999999	n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3na
+999999	n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3naat
+999999	n399tann9nnt3ttnaaan9nann93na9t3a3t9999na3aan9antt3tn93aat3na
+\end{alltt}
+\pagebreak
+
+\section{Тест производительности}
+Тест производительности представляет из себя следующее: при тесте с максимальным значением ключа 999999 сравним разницу в скорости сортировки подсчетом и быстрой сортировки(Хоара). 
+
+\begin{alltt}
+MacBook-Pro-Amelia:1 amelia$ ./dat < test.txt
+The time of counting sort: 226 ms
+The time of quick sort: 8 ms
+MacBook-Pro-Amelia:1 amelia$ ./dat < test1.txt
+The time of counting sort: 225 ms
+The time of quick sort: 0 ms
+\end{alltt}
+
+В первом тесте было 17000 элементов для анализа, во втором - 9 элементов. Время сортировки Хоара в среднем O(n log n), в худшем случае - O($n^2$). Т.е. время сортировки Хоара зависит только от количества элементов для сортировки, чем их меньше, тем быстрее эта сортировка. \\
+Сортировка подсчетом же имеет скорость О(n + k), т.е. критически зависит от диапазона значений сортируемого вектора. В обоих тестах максимальное значение элемента вектора 999999, что заставляет сортировку тратить много времени и памяти, количество элементов в этих двух тестах практически не влияют на скорость сортировки. В то же время сортировка Хоара во-первых в несколько раз быстрее на данных тестах, в первом случае: \\n log n = 71917;\\n + k = 1016999;\\Во втором случае: \\n log n = 8.5;\\n + k = 1000008;\\ Из вышесказанного следует, что нужно использовать сортировку подсчетом в ситуациях, когда диапазон значений не велик, или гораздо меньше числа сортируемых объектов.  \\ \\ Так же прилагаю код функции сортировки Хоара, адаптированный под мой вариант входных значений.
+\begin{lstlisting}[language=C++]
+void quicksort(TVector &mas, int first, int last)
+{
+    int mid;
+    TElement count;
+    int f = first, l = last;
+    mid = mas[(f + l) / 2].key; //вычисление опорного элемента
+    do
+    {
+        while (mas[f].key < mid) f++;
+        while (mas[l].key > mid) l--;
+        if (f <= l) //перестановка элементов
+        {
+            count = mas[f];
+            mas[f] = mas[l];
+            mas[l] = count;
+            f++;
+            l--;
+        }
+    } while (f<l);
+    if (first<l) quicksort(mas, first, l);
+    if (f<last) quicksort(mas, f, last);
+}
+\end{lstlisting}
+\pagebreak
+
+
+\section{Выводы}
+Выполнив первую лабораторную работу по курсу \enquote{Дискретный анализ}, я научилась правильной работе со строками в С++. Попробовала работать с valgrind, оказалось, что под операционную систему macOS эта утилита очень плохо работает, но поняла её принцип. Так же я научилась обращать внимание на экономный выбор типа данных и ошибки, связанные с неправильным выбором типа. Например, цикл $for(size_t k = 1000; k >=0; k--)$ будет работать неправильно, т.к. k никогда не примет отрицательное значение, в отличии от например int.
+\pagebreak
+
+\begin{thebibliography}{99}
+\bibitem{Kormen}
+Томас\,Х.\,Кормен, Чарльз\,И.\,Лейзерсон, Рональд\,Л.\,Ривест, Клиффорд\,Штайн.
+{\itshape Алгоритмы: построение и анализ, 2-е издание.} --- Издательский дом \enquote{Вильямс}, 2007. Перевод с английского: И.\,В.\,Красиков, Н.\,А.\,Орехова, В.\,Н.\,Романов. --- 1296 с. (ISBN 5-8459-0857-4 (рус.))
+\bibitem{wikipedia_sort}
+{\itshape Сортировка подсчётом — Википедия.} \\URL: \texttt{http://ru.wikipedia.org/wiki/Сортировка\_подсчётом} (дата обращения: 16.12.2013).
+\bibitem{gost}
+\href{http://www.ifap.ru/library/gost/7052008.pdf}{Список использованных источников оформлять нужно по  ГОСТ Р 7.05-2008}
+\end{thebibliography}
+\pagebreak
+\end{document}
