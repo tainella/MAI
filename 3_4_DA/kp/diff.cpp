@@ -52,11 +52,11 @@ int MyersDiff(std::string* a, int N, std::string* b, int M) {
     return -1;
 }
 
-std::tuple<int, int, int, int, int> FindMiddleSnake(std::string* a, int N, std::string* b, int M) {
+std::tuple<int, int, int, int, int> MiddleSnake(std::string* a, int N, std::string* b, int M) {
     int delta = N - M;
-    int MAX = M + N;
-    static V fv(-MAX, MAX);
-    static V rv(-MAX, MAX);
+    int max = M + N;
+    static V fv(-max, max);
+    static V rv(-max, max);
     int x, y;
     fv[1] = 0;
     rv[delta + 1] = N + 1;
@@ -118,7 +118,7 @@ void SES(std::string* a, int N, std::string* b, int M) {
     }
     if (N > 0 && M > 0) {
         int x, y, u, v, D;
-        std::tie(x, y, u, v, D) = FindMiddleSnake(a, N, b, M);
+        std::tie(x, y, u, v, D) = MiddleSnake(a, N, b, M);
         SES(a, x, b, y);
         SES(a + u, N - u, b + v, M - v);
     } else if (N > 0) {
