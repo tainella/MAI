@@ -101,13 +101,15 @@ std::tuple<int, int, int, int, int> MiddleSnake(std::string* a, int N, std::stri
     return {};
 }
 
-void SES(std::string* a, int N, std::string* b, int M) {
+void SES(std::string* a, int N, std::string* b, int M, int pos, int pos1) {
     std::string *startA = nullptr;
     if (startA == nullptr) {
         startA = a;
     }
     while (*a == *b && N > 0 && M > 0) {
         ++a;
+        ++pos;
+        ++pos1;
         ++b;
         --N;
         --M;
@@ -119,16 +121,20 @@ void SES(std::string* a, int N, std::string* b, int M) {
     if (N > 0 && M > 0) {
         int x, y, u, v, D;
         std::tie(x, y, u, v, D) = MiddleSnake(a, N, b, M);
-        SES(a, x, b, y);
-        SES(a + u, N - u, b + v, M - v);
+        SES(a, x, b, y, pos, pos1);
+        SES(a + u, N - u, b + v, M - v, pos+u, pos1+v);
     } else if (N > 0) {
+        std::cout << pos +1 << "," << N + pos << "-"  << ":\n";
         for (int i = 0; i < N; i++) {
-            std::cout << "-" << a[a + i - startA] << "\n";
+            std::cout << "- " << a[a + i - startA] << "\n";
         }
+        std::cout << "-----------------\n";
     } else if (M > 0) {
+        std::cout << "+" << pos1+1 << "," << M + pos1 << ":\n";
         for (int i = 0; i < M; i++) {
-            std::cout << "+" << b[i] << "\n";
+            std::cout << "+ " << b[i] << "\n";
         }
+        std::cout << "-----------------\n";
     }
 }
 
@@ -174,5 +180,5 @@ int main(int argc, const char * argv[]) {
     file2.close();
     
     std::cout << "\nNumber of changes required: " << MyersDiff(a, N_a_size, b, N_b_size) << "\n" << std::endl;
-    SES(a, N_a_size, b, N_b_size);
+    SES(a, N_a_size, b, N_b_size, 0, 0);
 }
