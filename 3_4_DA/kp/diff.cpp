@@ -126,13 +126,13 @@ void SES(std::string* a, int N, std::string* b, int M, int pos, int pos1) {
     } else if (N > 0) {
         std::cout << pos +1 << "," << N + pos << "-"  << ":\n";
         for (int i = 0; i < N; i++) {
-            std::cout << "- " << a[a + i - startA] << "\n";
+            std::cout << "- " <<"\x1b[41m" << a[a + i - startA] << "\x1b[40m" << "\n";
         }
         std::cout << "-----------------\n";
     } else if (M > 0) {
         std::cout << "+" << pos1+1 << "," << M + pos1 << ":\n";
         for (int i = 0; i < M; i++) {
-            std::cout << "+ " << b[i] << "\n";
+            std::cout << "+ " <<"\x1b[42m" << b[i] << "\x1b[40m" <<"\n";
         }
         std::cout << "-----------------\n";
     }
@@ -140,45 +140,58 @@ void SES(std::string* a, int N, std::string* b, int M, int pos, int pos1) {
 
 int main(int argc, const char * argv[]) {
     const char* name1 = argv[1];
-    const char* name2 = argv[2];
-    std::ifstream file1(name1);
-    std::ifstream file2(name2);
-    int N_a_max = 20;
-    int N_a_size = 0;
-    int N_b_max = 20;
-    int N_b_size = 0;
-    std::string* a = new std::string[N_a_max];
-    std::string* b = new std::string[N_b_max];
-    std::string buf;
-    while(getline(file1, buf)){
-        if (N_a_size >= N_a_max) {
-            N_a_max = N_a_max * 2;
-            std::string* aa = new std::string[N_a_max];
-            for (int i = 0; i < N_a_size; i++) {
-                aa[i] = a[i];
-            }
-            delete [] a;
-            a = aa;
-        }
-        a[N_a_size] = buf;
-        N_a_size++;
+    if (!strcmp(name1,"-help")) {
+        std::cout << "MYERS diff algorythm \n+[start position],[end position] shows which lines are added on new positions\n[start position],[end position]- shows which lines are removed from their positions\nEnjoy!\n";
     }
-    while(getline(file2, buf)){
-        if (N_b_size >= N_b_max) {
-            N_b_max = N_b_max * 2;
-            std::string* bb = new std::string[N_b_max];
-            for (int i = 0; i < N_b_size; i++) {
-                bb[i] = b[i];
-            }
-            delete [] b;
-            b = bb;
+    else {
+        const char* name2 = argv[2];
+        std::ifstream file1(name1);
+        if (!(file1.is_open())){
+            std::cout << "No file " << name1 << " found\n";
+            return -1;
         }
-        b[N_b_size] = buf;
-        N_b_size++;
+        std::ifstream file2(name2);
+        if (!(file2.is_open())){
+            std::cout << "No file " << name2 << " found\n";
+            return -1;
+        }
+        int N_a_max = 20;
+        int N_a_size = 0;
+        int N_b_max = 20;
+        int N_b_size = 0;
+        std::string* a = new std::string[N_a_max];
+        std::string* b = new std::string[N_b_max];
+        std::string buf;
+        while(getline(file1, buf)){
+            if (N_a_size >= N_a_max) {
+                N_a_max = N_a_max * 2;
+                std::string* aa = new std::string[N_a_max];
+                for (int i = 0; i < N_a_size; i++) {
+                    aa[i] = a[i];
+                }
+                delete [] a;
+                a = aa;
+            }
+            a[N_a_size] = buf;
+            N_a_size++;
+        }
+        while(getline(file2, buf)){
+            if (N_b_size >= N_b_max) {
+                N_b_max = N_b_max * 2;
+                std::string* bb = new std::string[N_b_max];
+                for (int i = 0; i < N_b_size; i++) {
+                    bb[i] = b[i];
+                }
+                delete [] b;
+                b = bb;
+            }
+            b[N_b_size] = buf;
+            N_b_size++;
+        }
+        file1.close();
+        file2.close();
+        
+        std::cout << "\nNumber of changes required: " << MyersDiff(a, N_a_size, b, N_b_size) << "\n" << std::endl;
+        SES(a, N_a_size, b, N_b_size, 0, 0);
     }
-    file1.close();
-    file2.close();
-    
-    std::cout << "\nNumber of changes required: " << MyersDiff(a, N_a_size, b, N_b_size) << "\n" << std::endl;
-    SES(a, N_a_size, b, N_b_size, 0, 0);
 }
