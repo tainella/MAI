@@ -3,6 +3,7 @@
       list1
       (if (null list1)
       	   list2
-      	   (cons (first list1) (interleave (list2 (rest list1)))))))
+      	   (cons (first list1) (interleave list2 (rest list1))))))
 
-(interleave2 '(a (b c) e f g) '(1 2 (3 4)))
+(interleave '(a (b c) e f g) '(1 2 (3 4)))
+(interleave '(a a a) '())
