@@ -4,12 +4,10 @@
     (pprint matrix stream)
     (values)))
 
-(defun find_max(a i j)
+(defun find_max(a ii jj)
 	(let max (aref a 0 0))
-	(loop with n = (array-dimension a)
-      for i upfrom 0 below n do
-      (loop with m = (array-dimension a 0)
-      	for j upfrom 0 below m do
+	(loop for i upfrom 0 below ii do
+      (loop for j upfrom 0 below jj do
       		(if (< max (aref a i j))
       			setf max (aref a i j)))))
 
