@@ -4,7 +4,7 @@
     (pprint matrix stream)
     (values)))
 
-(defun copy-array (array &key
+(defun make_matrix (array &key
                    (element-type (array-element-type array))
                    (fill-pointer (and (array-has-fill-pointer-p array)
                                       (fill-pointer array)))
@@ -14,9 +14,6 @@
                                 :element-type element-type
                                 :adjustable adjustable
                                 :fill-pointer fill-pointer)))
-    (dotimes (i (array-total-size array))
-      (setf (row-major-aref new-array i)
-            (row-major-aref array i)))
     new-array))
 
 (defun find_max(a ii jj)
@@ -29,7 +26,7 @@
     max))
 
 (defun max_matrix (a)
-	(let ((b (make-array ((array-dimension a 0) (array-dimension a 1)) : initial-element 0)))
+	(let ((b (make_matrix a)))
 		(loop with n = (array-dimension a 0)
       	for i upfrom 0 below n do
       		(loop with m = (array-dimension a 1)
