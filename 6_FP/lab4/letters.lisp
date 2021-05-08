@@ -11,8 +11,8 @@
   ;; Преобразовать и латинские, и русские буквы строки в строчные
   (map 'string #'russian-char-downcase string))
 
-(defun whitespace-char-p (char)
-  (member char '(#\Space #\Tab #\Newline)))
+;;(defun whitespace-char-p (char)
+  ;;(member char '(#\Space #\Tab #\Newline)))
   
 (defun word-list (string)
   ;; Разбить строки на слова, разделённые знаками whitespace
@@ -27,21 +27,22 @@
         while (< right len)))
 
 (defun is_two-char-word (word)
-	(let (answer NIL) 
+	(let ((answer 0))
 		(loop with len = (length word)
 			for j upfrom 0 below len do
-				(let a (char word j)
-					(if (search a word :j+1 len)
+				(let ((a (char word j)))
+					(if (find a word :start (+ j 1) :end len)
 					(answer = 1))))
 	answer))
 
 (defun remove-two-char-words(text)
-	(collect 
 	(dolist (sentence text)
-      (dolist (word (word-list sentence))
-      	(let ((string (string-right-trim ",.;:?!" (russian-string-downcase word))))
-      		(when (< 0 (length string))
-      			if (= NIL is_two-char-word(word))
-      				collect word))))))
+      collect (dolist (word (word-list sentence))
+      		(let ((string (string-right-trim ",.;:?!" (russian-string-downcase word))))
+      				(when (< 0 (length string))
+      					(if (= 0 (is_two-char-word (russian-char-downcase word)))
+      						(collect word)))))))
 
-print((remove-two-char-words '("Оно скрылось за деревьями." "Мы прошли, не заметив его.")))
+;;(remove-two-char-words '("Оно скрылось за деревьями." "Мы прошли, не заметив его."))
+(remove-two-char-words '("Ono skrulos za derevyami." "Mu proshli, ne zametiv ego."))
+
