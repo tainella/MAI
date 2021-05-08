@@ -31,17 +31,18 @@
 		(loop with len = (length word)
 			for j upfrom 0 below len do
 				(let ((a (char word j)))
-					(if (find a word :start (+ j 1) :end len)
-					(answer = 1))))
+					(if (find a word :start (+ 1 j) :end len)
+					(setf answer 1))))
 	answer))
 
 (defun remove-two-char-words(text)
 	(dolist (sentence text)
       collect (dolist (word (word-list sentence))
+      		(let ((predloz ()))
       		(let ((string (string-right-trim ",.;:?!" (russian-string-downcase word))))
       				(when (< 0 (length string))
-      					(if (= 0 (is_two-char-word (russian-char-downcase word)))
-      						(collect word)))))))
+      					(when (= 0 (is_two-char-word (russian-string-downcase string)))
+      						(push string predloz))))))))
 
 ;;(remove-two-char-words '("Оно скрылось за деревьями." "Мы прошли, не заметив его."))
 (remove-two-char-words '("Ono skrulos za derevyami." "Mu proshli, ne zametiv ego."))
