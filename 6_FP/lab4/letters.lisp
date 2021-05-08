@@ -9,7 +9,7 @@
 
 (defun russian-string-downcase (string)
   ;; Преобразовать и латинские, и русские буквы строки в строчные
-  (map 'string #'russian-char-downcase string)
+  (map 'string #'russian-char-downcase string))
 
 (defun whitespace-char-p (char)
   (member char '(#\Space #\Tab #\Newline)))
@@ -26,7 +26,7 @@
           collect (subseq string left right)
         while (< right len)))
 
-defun is_two-char-word (word)
+(defun is_two-char-word (word)
 	(let (answer NIL) 
 		(loop with len = (length word)
 			for j upfrom 0 below len do
@@ -35,10 +35,13 @@ defun is_two-char-word (word)
 					(answer = 1))))
 	answer))
 
-defun remove-two-char-words(text)
+(defun remove-two-char-words(text)
+	(collect 
 	(dolist (sentence text)
       (dolist (word (word-list sentence))
       	(let ((string (string-right-trim ",.;:?!" (russian-string-downcase word))))
       		(when (< 0 (length string))
       			if (= NIL is_two-char-word(word))
-      				())
+      				collect word))))))
+
+print((remove-two-char-words '("Оно скрылось за деревьями." "Мы прошли, не заметив его.")))
