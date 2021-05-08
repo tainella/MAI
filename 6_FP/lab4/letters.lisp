@@ -11,8 +11,8 @@
   ;; Преобразовать и латинские, и русские буквы строки в строчные
   (map 'string #'russian-char-downcase string))
 
-;;(defun whitespace-char-p (char)
-  ;;(member char '(#\Space #\Tab #\Newline)))
+(defun whitespace-char-p (char)
+  (member char '(#\Space #\Tab #\Newline)))
   
 (defun word-list (string)
   ;; Разбить строки на слова, разделённые знаками whitespace
@@ -58,6 +58,5 @@
       		(apply #'concatenate 'string predloz))))
 
 
-;;(remove-two-char-words '("Оно скрылось за деревьями." "Мы прошли, не заметив его."))
-(remove-two-char-words '("Ono skrulos za derevyami." "Mu proshli, ne zametiv ego."))
-
+(print (remove-two-char-words '("Оно скрылось за деревьями." "Мы прошли, не заметив его.")))
+(print (remove-two-char-words '("Ono skrulos za derevyami." "Mu proshli, ne zametiv ego.")))
