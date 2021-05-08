@@ -32,13 +32,18 @@
     	(incf (gethash (char word i) ht 0)))
     ht))
 
+(defun delete_end(list)                      
+  (cond ((null (cdr list)) 
+     nil)                        
+    (t 
+     (cons (car list) 
+           (delete_end (cdr list))))))
 
 (defun is_two-char-word (word)
 	(let ((answer 0))
 		(if (>= 2 (hash-table-count (collect-letter-counts word)))
 			(setf answer 1))
 	answer))
-
 
 (defun remove-two-char-words(text)
 	(loop for sentence in text
@@ -47,8 +52,9 @@
       		(let ((string (string-right-trim ",.;:?!" (russian-string-downcase word))))
       				(when (< 0 (length string))
       					(when (= 0 (is_two-char-word (russian-string-downcase string)))
-      						(push string predloz)
-      						(push " " predloz)))))
+      						(setq predloz (append predloz (list word)))
+      						(setq predloz (append predloz (list " ")))))))
+      		(setq predloz (delete_end predloz)) ;;убрать последний пробел
       		(apply #'concatenate 'string predloz))))
 
 
