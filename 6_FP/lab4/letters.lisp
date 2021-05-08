@@ -26,14 +26,19 @@
           collect (subseq string left right)
         while (< right len)))
 
-defun collect-word-counts (text)
-  ;; Собрать все слова текста и подсчитать число их вхождений
-  ;; Value: Хэш-таблица: слово -> счётчик
-  (let ((ht (make-hash-table :test #'equal)))
-    (dolist (sentence text)
+defun is_two-char-word (word)
+	(let (answer NIL) 
+		(loop with len = (length word)
+			for j upfrom 0 below len do
+				(let a (char word j)
+					(if (search a word :j+1 len)
+					(answer = 1))))
+	answer))
+
+defun remove-two-char-words(text)
+	(dolist (sentence text)
       (dolist (word (word-list sentence))
-        ;; Отбросить знаки пунктуации справа от слов и к нижнему регистру
-        (let ((string (string-right-trim ",.;:?!" (russian-string-downcase word))))
-          (when (< 0 (length string))              ; только непустые слова
-            (incf (gethash string ht 0))))))
-    ht))
+      	(let ((string (string-right-trim ",.;:?!" (russian-string-downcase word))))
+      		(when (< 0 (length string))
+      			if (= NIL is_two-char-word(word))
+      				())
