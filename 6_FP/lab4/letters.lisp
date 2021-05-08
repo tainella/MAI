@@ -26,14 +26,19 @@
           collect (subseq string left right)
         while (< right len)))
 
+(defun collect-letter-counts (word)
+  (let ((ht (make-hash-table :test #'equal)))
+  	(loop for i upfrom 0 below (length word) do
+    	(incf (gethash (char word i) ht 0)))
+    ht))
+
+
 (defun is_two-char-word (word)
 	(let ((answer 0))
-		(loop with len = (length word)
-			for j upfrom 0 below len do
-				(let ((a (char word j)))
-					(if (find a word :start (+ 1 j) :end len)
-					(setf answer 1))))
+		(if (>= 2 (hash-table-count (collect-letter-counts word)))
+			(setf answer 1))
 	answer))
+
 
 (defun remove-two-char-words(text)
 	(dolist (sentence text)
@@ -42,7 +47,8 @@
       		(let ((string (string-right-trim ",.;:?!" (russian-string-downcase word))))
       				(when (< 0 (length string))
       					(when (= 0 (is_two-char-word (russian-string-downcase string)))
-      						(push string predloz))))))))
+      						(push string predloz)))))
+      		predloz)))
 
 ;;(remove-two-char-words '("Оно скрылось за деревьями." "Мы прошли, не заметив его."))
 (remove-two-char-words '("Ono skrulos za derevyami." "Mu proshli, ne zametiv ego."))
