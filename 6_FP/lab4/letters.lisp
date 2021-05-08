@@ -41,14 +41,16 @@
 
 
 (defun remove-two-char-words(text)
-	(dolist (sentence text)
-      collect (dolist (word (word-list sentence))
-      		(let ((predloz ()))
+	(loop for sentence in text
+      collect (let ((predloz ()))
+      	(dolist (word (word-list sentence))
       		(let ((string (string-right-trim ",.;:?!" (russian-string-downcase word))))
       				(when (< 0 (length string))
       					(when (= 0 (is_two-char-word (russian-string-downcase string)))
-      						(push string predloz)))))
-      		predloz)))
+      						(push string predloz)
+      						(push " " predloz)))))
+      		(apply #'concatenate 'string predloz))))
+
 
 ;;(remove-two-char-words '("Оно скрылось за деревьями." "Мы прошли, не заметив его."))
 (remove-two-char-words '("Ono skrulos za derevyami." "Mu proshli, ne zametiv ego."))
