@@ -68,13 +68,20 @@
         ((null list2) null)
         (t 
           (make-instance 'polynom
-                        :var 'x
+                        :var 'y
                         :terms
-                        (loop for j upfrom 0 below i
-        					collect (list (make-term :order 1
-        								  			 :coeff 1)
-        					   			   (make-term :order 0
-        								  			  :coeff (* (nth i list1) -1))))))))
+                        (nconc (list make-term :order 0
+          						   		 	   :coeff (nth i list2))
+          					  (loop for j upfrom 0 below i
+        						collect (make-term :order 0
+          						   		 		   :coeff
+          						   		 (make-instance 'polynom
+                        									:var 'x
+                        									:terms 
+          													(list (make-term :order 1
+        								  			 				   		 :coeff 1)
+        					   			  						  (make-term :order 0
+        								  			 				:coeff (* (nth j list1) -1)))))))))))
 
 (defun construct_polynom (list1 list2)
   (make-instance 'polynom 
@@ -85,5 +92,4 @@
           												:coeff (glitch list1 list2 i))))))
 
 ;;(construct_polynom '(1 2 3 4) '(7 7 7 7 7))
-;;(glitch '(1 2 3 4) '(7 7 7 7 7) 2)
-;;(make-d-poly '(7 7 7 7 7) 4)
+(glitch '(1 2 3 4) '(7 7 7 7 7) 2)
