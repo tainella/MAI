@@ -63,55 +63,27 @@
                    (add-terms (rest tl1)
                               (rest tl2)))))))))
 
-(defun glitch (list1 list2)
+(defun glitch (list1 list2 i)
 	(cond ((null list1) null)
         ((null list2) null)
         (t 
-        	(let ((n (min (length list1) (length list2))))
-        	(loop for i upfrom 0 below n
-        		collect (list (make-term :order 1
-        								  :coeff 1)
-        					   (make-term :order 0
-        								  :coeff (* (nth i list1) -1))))))))
-(defun make-d-poly (list n)
-	(make-instance 'polynom 
-          :var 'x
-          :terms (loop for i upfrom 0 below n
-        			collect (make-term :order 0
-        							   :coeff (nth i list)))))
-          
-(defmethod mul2 ((p1 polynom) (p2 polynom))
-  (if (same-variable-p (var p1) (var p2))
-      (make-instance 'polynom
-                     :var (var p1)
-                     :terms (mul-terms (terms p1)
-                                       (terms p2)))
-      (error "Многочлены от разных переменных: ~s и ~s"
-             p1 p2)))
-
-(defun mul-terms (tl1 tl2)
-  ;; Скрестить каждый терм из списка tl1 с каждым из списка tl2
-  (if (null tl1)
-      ()
-      (add-terms (mul-term-by-all-terms (first tl1) tl2)
-                 (mul-terms (rest tl1) tl2))))
-
-(defun mul-term-by-all-terms (t1 term-list)
-  ;; Скрестить терм t1 с каждым из списка term-list
-  (if (null term-list)
-      ()
-      (let ((t2 (first term-list)))
-        ;; Коэффициенты перемножаем, а степени суммируем
-        (adjoin-term (make-term :coeff (mul2 (coeff t1) (coeff t2))
-                                :order (+ (order t1) (order t2)))
-                     (mul-term-by-all-terms t1 (rest term-list))))))
+          (make-instance 'polynom
+                        :var 'x
+                        :terms
+                        (loop for j upfrom 0 below i
+        					collect (list (make-term :order 1
+        								  			 :coeff 1)
+        					   			   (make-term :order 0
+        								  			  :coeff (* (nth i list1) -1))))))))
 
 (defun construct_polynom (list1 list2)
-  (mul2 (make-d-poly list2 (min (length list1) (length list2))) 
-  		(make-instance 'polynom 
-          					:var 'x
-          					:terms (glitch list1 list2))))
+  (make-instance 'polynom 
+          			:var 'z
+          			:terms (let ((n (min (length list1) (length list2))))
+          						(loop for i upfrom 0 below n
+          							collect (make-term :order 0
+          												:coeff (glitch list1 list2 i))))))
 
-(construct_polynom '(1 2 3 4) '(7 7 7 7 7))
-;;(glitch '(1 2 3 4) '(7 7 7 7 7))
+;;(construct_polynom '(1 2 3 4) '(7 7 7 7 7))
+;;(glitch '(1 2 3 4) '(7 7 7 7 7) 2)
 ;;(make-d-poly '(7 7 7 7 7) 4)
