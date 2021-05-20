@@ -37,32 +37,22 @@
                           (order term)))
                   (terms p))))
 
-(defun adjoin-term (term term-list)
-  ;; Добавить term к списку term-list
-  (if (zerop1 (coeff term))   ; если коэффициент нулевой,
-      term-list               ; то отбрасываем терм,
-      (cons term term-list))) ; иначе накапливаем
-
-(defun same-variable-p (v1 v2)
-  ;; Переменные v1 и v2 - совпадающие символы
-  (and (symbolp v1) (symbolp v2) (eq v1 v2)))
-
 (defun glitch (list1 list2 i)
 	(cond ((null list1) null)
         ((null list2) null)
         (t 
           (make-instance 'polynom
-                        :var (nth (1+ i) list2)
+                        :var (nth i list2)
                         :terms (braces list1 i)))))
 
 (defun braces(list1 i)
-	(let ((br (pair (* -1 (nth 0 list1)) (* -1 (nth 1 list1)))))
-	(loop for j upfrom 2 below i do
+	(let ((br (minus (* -1 (nth 0 list1)))))
+	(loop for j upfrom 1 below i do
 		(setq br (make-instance 'polynom
                	  :var br
                	  :terms (list (make-term 
                	  				:order 1
-                                :coeff (pair (* -1 (nth 0 list1)) (* -1 (nth 1 list1))))))))
+                                :coeff (minus (* -1 (nth j list1))))))))
     (list (make-term 
             :order 1
           	:coeff br))))
@@ -82,10 +72,23 @@
                    				:order 1
           					 	:coeff (minus cof1)))))
 
-(glitch '(1 2 3 4) '(6 7 8 9 10) 2)
+(defun my_polynom(list1 list2)
+	(let ((n (min (length list1) (- (length list2) 2))))
+		(make-instance 'polynom
+               :var 'z
+               :terms (nconc (list 
+               				(make-term 
+                   					:order 0
+                                    :coeff(nth 0 list2)) 
+                            (make-term 
+                   					:order 0
+                                    :coeff(make-instance 'polynom
+                   										:var (nth 1 list2)
+                   										:terms (list (make-term 
+                   													  :order 1
+                                       								  :coeff (minus (* -1 (nth 0 list1))))))))
+               			(loop for j upfrom 2 below (1+ n)
+               				collect (make-term :order 0
+                                       	   	   :coeff (glitch list1 list2 j)))))))
 
-;;(pair 1 2)
-
-
-
-          					 	
+(my_polynom '(1 2 3 4) '(6 7 8 9 10 11))
