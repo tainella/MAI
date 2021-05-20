@@ -73,22 +73,25 @@
           					 	:coeff (minus cof1)))))
 
 (defun my_polynom(list1 list2)
+	(cond ((null list1) 
+			(make-instance 'polynom
+               				:var 'z
+               				:terms (list (make-term 
+                   						  :order 0
+          					 			  :coeff (nth 0 list2)))))
+        ((null list2) nil)
+        (t
 	(let ((n (min (length list1) (- (length list2) 2))))
 		(make-instance 'polynom
                :var 'z
                :terms (nconc (list 
                				(make-term 
                    					:order 0
-                                    :coeff(nth 0 list2)) 
-                            (make-term 
-                   					:order 0
-                                    :coeff(make-instance 'polynom
-                   										:var (nth 1 list2)
-                   										:terms (list (make-term 
-                   													  :order 1
-                                       								  :coeff (minus (* -1 (nth 0 list1))))))))
-               			(loop for j upfrom 2 below (1+ n)
+                                    :coeff(nth 0 list2)))
+               			(loop for j upfrom 1 below (1+ n)
                				collect (make-term :order 0
-                                       	   	   :coeff (glitch list1 list2 j)))))))
+                                       	   	   :coeff (glitch list1 list2 j)))))))))
 
 (my_polynom '(1 2 3 4) '(6 7 8 9 10 11))
+(my_polynom '(1 2 3 4) '())
+(my_polynom '() '(1 2 3 4))
