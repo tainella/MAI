@@ -9,6 +9,12 @@
 (defun order (term) (first term))
 (defun coeff (term) (second term))
 
+(defmethod zerop1 ((p polynom))
+  (null (terms p)))
+
+(defmethod minusp1 ((p polynom))
+   nil)
+
 (defgeneric zerop1 (arg)
  (:method ((n number))   ; (= n 0)
   (zerop n)))
@@ -41,28 +47,6 @@
   ;; Переменные v1 и v2 - совпадающие символы
   (and (symbolp v1) (symbolp v2) (eq v1 v2)))
 
-(defun add-terms (tl1 tl2)
-  ;; Объединить списки термов tl1 и tl2,
-  ;; упорядочивая по убыванию степеней
-  (cond ((null tl1) tl2)
-        ((null tl2) tl1)
-        (t
-         (let ((t1 (first tl1))
-               (t2 (first tl2)))
-           (cond ((> (order t1) (order t2))
-                  (adjoin-term t1
-                               (add-terms (rest tl1) tl2)))
-                 ((< (order t1) (order t2))
-                  (adjoin-term t2
-                               (add-terms tl1 (rest tl2))))
-                 (t
-                  ;; степени совпадают - суммируем коэффициенты
-                  (adjoin-term  
-                   (make-term :coeff (add2 (coeff t1) (coeff t2))
-                              :order (order t1))
-                   (add-terms (rest tl1)
-                              (rest tl2)))))))))
-
 (defun glitch (list1 list2 i)
 	(cond ((null list1) null)
         ((null list2) null)
@@ -70,26 +54,35 @@
           (make-instance 'polynom
                         :var 'y
                         :terms
-                        (nconc (list make-term :order 0
-          						   		 	   :coeff (nth i list2))
+                        (nconc (list (make-term :order 0
+          						   		 	    :coeff (nth i list2))
           					  (loop for j upfrom 0 below i
         						collect (make-term :order 0
-          						   		 		   :coeff
-          						   		 (make-instance 'polynom
-                        									:var 'x
-                        									:terms 
-          													(list (make-term :order 1
-        								  			 				   		 :coeff 1)
-        					   			  						  (make-term :order 0
-        								  			 				:coeff (* (nth j list1) -1)))))))))))
+          						   		 		   :coeff (razn list1 j)))))))))
+					  			 					
+(defun minus(cof) ;;works
+	(make-instance 'polynom
+               :var 'x
+               :terms (list (make-term :order 1
+                                       :coeff 1)
+                            (make-term :order 0
+                                       :coeff cof))))
 
-(defun construct_polynom (list1 list2)
-  (make-instance 'polynom 
-          			:var 'z
-          			:terms (let ((n (min (length list1) (length list2))))
-          						(loop for i upfrom 0 below n
-          							collect (make-term :order 0
-          												:coeff (glitch list1 list2 i))))))
+(defun pair(cof1 cof2) ;;works
+	(make-instance 'polynom
+                   :var 'y
+                   :terms (list (make-term 
+                   				:order 0
+          					 	:coeff (minus cof1)))))
 
-;;(construct_polynom '(1 2 3 4) '(7 7 7 7 7))
-(glitch '(1 2 3 4) '(7 7 7 7 7) 2)
+;;(glitch '(1 2 3 4) '(7 7 7 7 7) 2)
+
+;;(razn '(1 2 3 4) 4)
+
+
+;;(pair 1 2)
+
+
+;; :coeff (list((minus cof1) (minus cof2)))))))
+
+          					 	
