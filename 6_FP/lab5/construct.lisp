@@ -52,13 +52,20 @@
         ((null list2) null)
         (t 
           (make-instance 'polynom
-                        :var 'y
-                        :terms
-                        (nconc (list (make-term :order 0
-          						   		 	    :coeff (nth i list2))
-          					  (loop for j upfrom 0 below i
-        						collect (make-term :order 0
-          						   		 		   :coeff (razn list1 j)))))))))
+                        :var (nth (1+ i) list2)
+                        :terms (braces list1 i)))))
+
+(defun braces(list1 i)
+	(let ((br (pair (* -1 (nth 0 list1)) (* -1 (nth 1 list1)))))
+	(loop for j upfrom 2 below i do
+		(setq br (make-instance 'polynom
+               	  :var br
+               	  :terms (list (make-term 
+               	  				:order 1
+                                :coeff (pair (* -1 (nth 0 list1)) (* -1 (nth 1 list1))))))))
+    (list (make-term 
+            :order 1
+          	:coeff br))))
 					  			 					
 (defun minus(cof) ;;works
 	(make-instance 'polynom
@@ -70,19 +77,15 @@
 
 (defun pair(cof1 cof2) ;;works
 	(make-instance 'polynom
-                   :var 'y
+                   :var (minus cof2)
                    :terms (list (make-term 
-                   				:order 0
+                   				:order 1
           					 	:coeff (minus cof1)))))
 
-;;(glitch '(1 2 3 4) '(7 7 7 7 7) 2)
-
-;;(razn '(1 2 3 4) 4)
-
+(glitch '(1 2 3 4) '(6 7 8 9 10) 2)
 
 ;;(pair 1 2)
 
 
-;; :coeff (list((minus cof1) (minus cof2)))))))
 
           					 	
