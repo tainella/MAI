@@ -42,21 +42,28 @@
         ((null list2) null)
         (t 
           (make-instance 'polynom
-                        :var (nth i list2)
-                        :terms (braces list1 i)))))
+                        :var 'x
+                        :terms (nconc 
+                        		(list (make-term :order 1
+                                       			 :coeff 1))
+                        		(loop for j upfrom 0 below i
+                        			collect (make-term 
+                        					:order 0
+                                       		:coeff (* -1(nth j list1)))))))))
+                                       
+(defun pair(cof1 cof2) ;;works
+	(make-instance 'polynom
+                   :var 'x
+                   :terms (list (make-term 
+                   				:order 0
+          					 	:coeff (* cof1 7))
+          					 	(make-term 
+          					 	:order 1
+                                :coeff 7)
+                            	(make-term 
+                   				:order 0
+          					 	:coeff (* cof2 7)))))
 
-(defun braces(list1 i)
-	(let ((br (minus (* -1 (nth 0 list1)))))
-	(loop for j upfrom 1 below i do
-		(setq br (make-instance 'polynom
-               	  :var br
-               	  :terms (list (make-term 
-               	  				:order 1
-                                :coeff (minus (* -1 (nth j list1))))))))
-    (list (make-term 
-            :order 1
-          	:coeff br))))
-					  			 					
 (defun minus(cof) ;;works
 	(make-instance 'polynom
                :var 'x
@@ -64,13 +71,6 @@
                                        :coeff 1)
                             (make-term :order 0
                                        :coeff cof))))
-
-(defun pair(cof1 cof2) ;;works
-	(make-instance 'polynom
-                   :var (minus cof2)
-                   :terms (list (make-term 
-                   				:order 1
-          					 	:coeff (minus cof1)))))
 
 (defun my_polynom(list1 list2)
 	(cond ((null list2) nil)
@@ -92,6 +92,7 @@
                				collect (make-term :order 0
                                        	   	   :coeff (glitch list1 list2 j)))))))))
 
+(pair 1 2)
 (my_polynom '(1 2 3 4) '(6 7 8 9 10 11))
 (my_polynom '(1 2 3 4) '())
 (my_polynom '() '(1 2 3 4))
