@@ -50,7 +50,7 @@ int main() {
 	CSC(cudaMemcpy(dev_v2, v2, sizeof(double) * n, cudaMemcpyHostToDevice));
 	
 	cudaEvent_t start, end;
-	for (int block = 1; block <= 1024; block += 1) {
+	for (int block = 1; block <= 1024; block *= 2) {
 		for (int threads = 32; threads <= 1024; threads *= 2) {
 			CSC(cudaEventCreate(&start));
 			CSC(cudaEventCreate(&end));
