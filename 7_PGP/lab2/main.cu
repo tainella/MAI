@@ -26,23 +26,23 @@ __global__ void kernel(uchar4 *out, int w, int h, int wn, int hn) {
 	int diff_w = w / wn;
 	int diff_h = h / hn;
 
-	uchar4 sum = make_uchar4( 0, 0, 0, 0);
 	int k = diff_h * diff_w; //количество пикселей в сетке
 
 	for(y = idy * diff_h; y < h; y += offsety*diff_h) { //координаты начала рамки для сжатия
 		for(x = idx * diff_w; x < w; x += offsetx*diff_w) {
-			for(int i = y; i <= y + diff_h; i++) { //подсчет среднего в рамке для сжатия
-				for(int j = x; j <= x + diff_w; j++) {
-					p = tex2D(tex, x, y);
-					sum.x += ~p.x;
-					sum.y += ~p.y;
-					sum.z += ~p.z;
+            uchar4 sum = make_uchar4( 0, 0, 0, 0);
+			for(int i = y; i < y + diff_h; i++) { //подсчет среднего в рамке для сжатия
+				for(int j = x; j < x + diff_w; j++) {
+					p = tex2D(tex, j, i);
+					sum.x += p.x;
+					sum.y += p.y;
+					sum.z += p.z;
 				}
 			}
 			sum.x = sum.x / k;
 			sum.y = sum.y / k;
 			sum.z = sum.z / k;
-			out[y * wn + x] = make_uchar4(~sum.x, ~sum.y, ~sum.z, sum.w);
+			out[y * wn + x] = make_uchar4(sum.x, sum.y, sum.z, sum.w);
 		}
 	}
 }
@@ -95,7 +95,7 @@ int main() {
 	CSC(cudaGetLastError());
 
 	uchar4 *data_out = (uchar4 *)malloc(sizeof(uchar4) * wn * hn);
-	CSC(cudaMemcpy(data_out, dev_out, sizeof(uchar4) * w * h, cudaMemcpyDeviceToHost));
+	CSC(cudaMemcpy(data_out, dev_out, sizeof(uchar4) * wn * hn, cudaMemcpyDeviceToHost));
 
 	// Отвязываем данные от текстурной ссылки
 	CSC(cudaUnbindTexture(tex));
