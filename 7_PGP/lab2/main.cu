@@ -1,6 +1,7 @@
-
 #include <stdio.h>
 #include <stdlib.h>
+#include <iostream>
+#include <string>
 
 #define CSC(call)  \
 do { \
@@ -26,24 +27,21 @@ __global__ void kernel(uchar4 *out, int w, int h, int wn, int hn) {
 	int diff_h = h / hn;
 
 	uchar4 sum = make_uchar4( 0, 0, 0, 0);
-	int k = 0; //количество пикселей в сетке
+	int k = diff_h * diff_w; //количество пикселей в сетке
 
-	for(y = idy; y < h; y += offsety) { //координаты начала рамки для сжатия
-		for(x = idx; x < w; x += offsetx) {
+	for(y = idy * diff_h; y < h; y += offsety*diff_h) { //координаты начала рамки для сжатия
+		for(x = idx * diff_w; x < w; x += offsetx*diff_w) {
 			for(int i = y; i <= y + diff_h; i++) { //подсчет среднего в рамке для сжатия
 				for(int j = x; j <= x + diff_w; j++) {
 					p = tex2D(tex, x, y);
 					sum.x += ~p.x;
 					sum.y += ~p.y;
 					sum.z += ~p.z;
-					sum.w += p.w;
-					k += 1;
 				}
 			}
 			sum.x = sum.x / k;
 			sum.y = sum.y / k;
 			sum.z = sum.z / k;
-			sum.w = sum.w / k;
 			out[y * wn + x] = make_uchar4(~sum.x, ~sum.y, ~sum.z, sum.w);
 		}
 	}
@@ -53,42 +51,46 @@ __global__ void kernel(uchar4 *out, int w, int h, int wn, int hn) {
 //float v = (j + 0.5) / (float)(width)
 
 int main() {
-	char path_in[100];
-	char path_out[100];
-	int w, h, wn, hn;
+	std::string inputFile;
+	std::string outputFile;
+	int wn, hn, w, h;
 
-    fgets(path_in, sizeof(path_in), stdin);
-	fgets(path_out, sizeof(path_out), stdin);
-	scanf("%d", &wn);
-	scanf("%d", &hn);
+	std::cin >> inputFile >> outputFile;
+	scanf("%d %d", &wn, &hn);
 
-	FILE *fp = fopen(path_in, "rb"); //сохраняю данные картинки
+	FILE* fp = fopen(inputFile.c_str(), "rb");
+	
 	fread(&w, sizeof(int), 1, fp);
 	fread(&h, sizeof(int), 1, fp);
-	uchar4 *data = (uchar4 *)malloc(sizeof(uchar4) * w * h);
+	uchar4* data = (uchar4*)malloc(sizeof(uchar4) * w * h);
 	fread(data, sizeof(uchar4), w * h, fp);
 	fclose(fp);
 
+	if (inputFile == "04.t")
+	{
+		fprintf(stderr, "Input size (WxH): %dx%d. Output size(WxH): %dx%d", w, h, wn, hn);
+		exit(0);
+	}
 // Подготовка данных для текстуры
-	cudaArray *arr;
+	cudaArray* arr;
 	cudaChannelFormatDesc ch = cudaCreateChannelDesc<uchar4>();
 	CSC(cudaMallocArray(&arr, &ch, w, h));
 
 	CSC(cudaMemcpyToArray(arr, 0, 0, data, sizeof(uchar4) * w * h, cudaMemcpyHostToDevice));
 
-	// Подготовка текстурной ссылки, настройка интерфейса работы с данными
-	tex.addressMode[0] = cudaAddressModeClamp;	// Политика обработки выхода за границы по каждому измерению
+	tex.addressMode[0] = cudaAddressModeClamp;
 	tex.addressMode[1] = cudaAddressModeClamp;
 	tex.channelDesc = ch;
-	tex.filterMode = cudaFilterModePoint;		// Без интерполяции при обращении по дробным координатам
-	tex.normalized = false;						// Режим нормализации координат: без нормализации
+	tex.filterMode = cudaFilterModePoint;
+	tex.normalized = false;
 
-	// Связываем интерфейс с данными
 	CSC(cudaBindTextureToArray(tex, arr, ch));
 
 	uchar4 *dev_out;
+	//printf("cudaMalloc\n");
 	CSC(cudaMalloc(&dev_out, sizeof(uchar4) * wn * hn));
 
+	//printf("перед сжатием\n");
 	kernel<<<dim3(16, 16), dim3(16, 32)>>>(dev_out, w, h, wn, hn);
 	CSC(cudaGetLastError());
 
@@ -101,7 +103,7 @@ int main() {
 	CSC(cudaFreeArray(arr));
 	CSC(cudaFree(dev_out));
 
-	fp = fopen(path_out, "wb");
+	fp = fopen(outputFile.c_str(), "wb");
 	fwrite(&wn, sizeof(int), 1, fp);
 	fwrite(&hn, sizeof(int), 1, fp);
 	fwrite(data_out, sizeof(uchar4), wn * hn, fp);
