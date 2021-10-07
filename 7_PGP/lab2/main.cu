@@ -30,7 +30,7 @@ __global__ void kernel(uchar4 *out, int w, int h, int wn, int hn) {
 
 	for(y = idy * diff_h; y < h; y += offsety*diff_h) { //координаты начала рамки для сжатия
 		for(x = idx * diff_w; x < w; x += offsetx*diff_w) {
-            uchar4 sum = make_uchar4( 0, 0, 0, 0);
+            uint4 sum = make_uint4( 0, 0, 0, 0);
 			for(int i = y; i < y + diff_h; i++) { //подсчет среднего в рамке для сжатия
 				for(int j = x; j < x + diff_w; j++) {
 					p = tex2D(tex, j, i);
