@@ -42,7 +42,7 @@ __global__ void kernel(uchar4 *out, int w, int h, int wn, int hn) {
 			sum.x = sum.x / k;
 			sum.y = sum.y / k;
 			sum.z = sum.z / k;
-			out[y * wn + x] = make_uchar4(sum.x, sum.y, sum.z, sum.w);
+			out[y * wn / diff_h  + x / diff_w] = make_uchar4(sum.x, sum.y, sum.z, sum.w);
 		}
 	}
 }
