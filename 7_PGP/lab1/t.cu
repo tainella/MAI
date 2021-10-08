@@ -65,7 +65,7 @@ int main() {
 			CSC(cudaEventDestroy(start));
 			CSC(cudaEventDestroy(end));
 
-			printf("kernel = <<<%d, $d>>>, time = %f\n", block, threads, t);
+			printf("kernel = <<<%d, %d>>>, time = %f\n", block, threads, t);
 		}
 	}
 
