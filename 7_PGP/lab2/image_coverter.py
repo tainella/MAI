@@ -1,3 +1,6 @@
+#запуск 
+#python3 image_coverter.py —decode —src 8x8Out.data —dest 8x8Out.png
+#python3 image_coverter.py —encode —src image.png —dest file.data
 import argparse
 
 from PIL import Image
