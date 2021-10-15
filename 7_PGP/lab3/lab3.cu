@@ -36,8 +36,6 @@ __global__ void kernel(uchar4 *data, int w, int h, int n) {
         for(x = idx; x < w; x += offsetx) {
             double4 p = make_double4(data[y * w + x].x, data[y * w + x].y, data[y * w + x].z, 0);//int4
             for (int j = 0; j < n; j++) {
-                 //int c_i = u[j].y * w + u[j].x;
-                 //double4 c = make_double4(data[c_i].x, data[c_i].y, data[c_i].z, 0); //int4
                  mas[j] = dist(u[j].x, u[j].y, u[j].z, p.x, p.y, p.z); //заполняем массив расстояний            
             }
             //поиск минимума
@@ -94,23 +92,23 @@ int main() {
         CSC(cudaMemcpy(data, dev_data, sizeof(uchar4) * h * w, cudaMemcpyDeviceToHost));
        
         //обновление центра кластеров
-        long long int k[n];
-        long long int sum[n][3];
-        for(int y = 0; y < n; y++) {
+        int k[n];
+        double sum[n][3];
+        for(y = 0; y < n; y++) {
             k[y] = 0;
             sum[y][0] = 0;
             sum[y][1] = 0;
             sum[y][2] = 0;
         }
-        int t;
-        for(int y = 0; y < h; y++) {
-            for(int x = 0; x < w; x++) {
-                t = data[y*w+x].w;
+        double4 t;
+        for(y = 0; y < h; y++) {
+            for(x = 0; x < w; x++) {
+                t = make_double4(data[y*w+x].x, data[y*w+x].y, data[y*w+x].z, data[y*w+x].w);
                 //printf("%d ", t);
-                k[t] += 1;
-                sum[t][0] += data[y*w+x].x;
-                sum[t][1] += data[y*w+x].y;
-                sum[t][2] += data[y*w+x].z;
+                k[int(t.w)] += 1;
+                sum[int(t.w)][0] += t.x;
+                sum[int(t.w)][1] += t.y;
+                sum[int(t.w)][2] += t.z;
             }
         }
         //printf("\n");
