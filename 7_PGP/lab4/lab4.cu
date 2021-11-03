@@ -22,22 +22,6 @@ struct action {
     }
 };
 
-__global__ void kernel(double *data, double* x, int n)
-{
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    int offsetx = blockDim.x * gridDim.x;
-    int idy = blockDim.y * blockIdx.y + threadIdx.y;
-	int offsety = blockDim.y * gridDim.y;
-
-     for(int k = n-1-idx; k >= 0; k -= offsetx) {
-        double d = 0;
-        for (int j = k + 1 + idy; j < n; j += offsety) {
-            d = d + data[j*n + k] * x[j];
-        }
-        x[k] = (data[n*n + k] - d) / data[k*n + k];
-    }
-}
-
 __global__ void swap(double* a, int k, int y, int n) {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
 	int offsetx = blockDim.x * gridDim.x;
@@ -93,6 +77,8 @@ int main() {
     action comparator;
 
     thrust::device_ptr<double> i_ptr, i_max_ptr;
+
+    double* dop = (double*)malloc(sizeof(double));
     
     for(int m = 0; m < n-1; m++) {
         int i_max = m;
@@ -102,20 +88,25 @@ int main() {
         if(m != i_max) {
             swap<<<256, 256>>>(data, m, i_max, n);
         }
-        change<<<dim3(32, 32), dim3(32, 32)>>>(data, n, m);
+        CSC(cudaMemcpy(dop, data+m*n+m, sizeof(double), cudaMemcpyDeviceToHost));
+        if (*dop != 0) {
+            change<<<dim3(32, 32), dim3(32, 32)>>>(data, n, m);
+        }
     }
 
     CSC(cudaMemcpy(a, data, sizeof(double) * n * (n+1), cudaMemcpyDeviceToHost));
     
     x[n - 1] = a[(n+1)*n - 1] / a[(n+1)*n - n - 1];
 
-    double* x_cuda;
-    CSC(cudaMalloc(&x_cuda, sizeof(double) * n));
-    CSC(cudaMemcpy(x_cuda, x, sizeof(double) * n, cudaMemcpyHostToDevice));
-
-    kernel<<<dim3(32, 32), dim3(32, 32)>>>(data, x_cuda, n);    
-
-    CSC(cudaMemcpy(x, x_cuda, sizeof(double) * n, cudaMemcpyDeviceToHost));
+    for(int k = n-1; k >= 0; k--) {
+        double d = 0;
+        for (int j = k + 1; j < n; j++) {
+            d = d + a[j*n + k] * x[j];
+        }
+        x[k] = (a[n*n + k] - d) / a[k*n + k];
+    }
+    std::cout.precision(10);
+    std::cout.setf(std::ios::scientific);
 
     for (int i = 0; i < n; i++) {
           std::cout << x[i] << " ";
