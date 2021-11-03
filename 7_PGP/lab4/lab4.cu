@@ -57,13 +57,13 @@ int main() {
     //ввод
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
-            std::cin >> p;
+            scanf("%lf", &p);
             a[j*n + i] = p;
         }
     }
 
     for (int i = 0; i < n; i++) {
-            std::cin >> p;
+            scanf("%lf", &p);
             int s = n*n + i;
             a[s] = p;
     }
