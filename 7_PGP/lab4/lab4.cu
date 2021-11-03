@@ -42,7 +42,7 @@ __global__ void change(double *data, int n, int m)
 
     for (int j = idx+ m +1; j < n; j += offsetx) {
             double d = data[m*n+j] / data[m*n+m];
-            for (int i = m + idy; i < n + 1; i+=offsety) { //для приписанной матрицы
+            for (int i = m + idy+1; i < n + 1; i+=offsety) { //для приписанной матрицы
                 data[i*n+j] = data[i*n+j] - data[i*n+m] * d;
             }
      }
