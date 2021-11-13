@@ -155,7 +155,6 @@ void scan(int* counts, int* out, int blocks, int max_block_size) {
         CSC(cudaFree(d_in_block_sums));
     }
     gpu_add_block_sums<<<grid_size, block_size>>>(out, out, block_sums);
-
     CSC(cudaFree(block_sums));
 }
 
@@ -163,12 +162,13 @@ __global__ void kernel(int* pref, unsigned char* out, int n, unsigned char* arra
 {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     int offsetx = blockDim.x * gridDim.x;
-    
-    for(int i = idx; i < n; i += offsetx) {
-        out[atomicAdd(pref + array[i], -1)] = array[i];
+
+    for(int i = n-1-idx; i >= 0; i -= offsetx){
+        out[atomicAdd(pref + array[i]+1, -1)-1] = array[i];
     }
     
 }
+
 
 __global__ void hist(unsigned char* array, int n, int* out) {
     __shared__ int temp[256];
@@ -218,7 +218,6 @@ int main() {
     CSC(cudaMalloc(&gpu_out, sizeof(unsigned char) * n));
     kernel<<<32,32>>>(gpu_pref, gpu_out, n, gpu_array);
     CSC(cudaMemcpy(array, gpu_out, sizeof(unsigned char) * n, cudaMemcpyDeviceToHost));
-
     for(int i = 0; i < n; i++) {
         //std::cout<< std::hex << array[i] << " ";
         std::cout << array[i] << " ";
