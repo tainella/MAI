@@ -16,22 +16,26 @@ do { \
 	} \
 } while (0); \
 
-__global__ void scan(int* counts)
+
+__global__ void scan(int* counts, int* out)
 {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     int offsetx = blockDim.x * gridDim.x;
     
-
+    __shared__ unsigned int temp[];
+    
+    
+    __syncthreads();
     
 }
 
-__global__ void kernel(int* pref, unsigned char* out)
+__global__ void kernel(int* pref, unsigned char* out, int n, unsigned char* array)
 {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     int offsetx = blockDim.x * gridDim.x;
     
     for(int i = idx; i < n; i += offsetx) {
-        out[atomicAdd(pref + i, -1)] = pref[i];
+        out[atomicAdd(pref + array[i], -1)] = array[i];
     }
     
 }
@@ -82,10 +86,14 @@ int main() {
     }
     std::cout << "\n";
 
-    scan<<<32,32>>>(gpu_counts);
+    int* gpu_pref;
+    CSC(cudaMalloc(&gpu_pref, sizeof(int) * 256));
+    scan<<<32,32>>>(gpu_counts, gpu_pref);
     
-    kernel<<<32,32>>>(gpu_counts, gpu_array);
-    CSC(cudaMemcpy(array, gpu_array, sizeof(unsigned char) * n, cudaMemcpyDeviceToHost));
+    unsigned char* gpu_out;
+    CSC(cudaMalloc(&gpu_out, sizeof(unsigned char) * n));
+    kernel<<<32,32>>>(gpu_pref, gpu_out, n, gpu_array);
+    CSC(cudaMemcpy(array, gpu_out, sizeof(unsigned char) * n, cudaMemcpyDeviceToHost));
 
     for(int i = 0; i < n; i++) {
         //std::cout<< std::hex << array[i] << " ";
