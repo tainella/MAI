@@ -49,7 +49,6 @@ def explicit(a, b, c, alfa, beta, gama, delta, lb, ub, n, K, h, tau, T, apr, sig
     for i in range(1, len(t)):
         for j in range(1, len(x) - 1):
             U[i,j] = U[i-1,j] + (a*tau/h**2)*(U[i-1,j-1] - 2*U[i-1,j] + U[i-1,j+1]) + (b*tau*0.5/h)*(- U[i-1,j-1] + U[i-1,j+1]) + c*tau*U[i-1,j] + tau*f(x[j],t[i-1])
-            #U[i,j] = (a*tau/(h**2) - b*tau/(2*h))*U[i-1,j-1] + (tau*c + 1 - 2*a*tau/(h**2))*U[i-1,j] + (a*tau/(h**2) + b*tau/(2*h))*U[i-1,j+1] + tau*f(x[j],t[i-1])
         if apr == 1:
             U[i,0] = (h * phi0(t[i],a,b,c) - alfa * U[i,1])/(h * beta - alfa)
             U[i,-1] = (h * phi1(t[i],a,b,c) + gama * U[i, -2] )/(h * delta + gama)
@@ -219,7 +218,6 @@ def plot_im(a, b, c, alfa, beta, gama, delta, lb, ub, n, K, h, tau, T, sigm, k):
         a = true_fval(x, t[i],a,b,c) - A2[i,:]
         eps = np.append(eps, norma(a))
     plt.plot(t, eps, color = 'orange', label = aprs[1])
-
     eps = []
     for i in range(len(t)):
         a = true_fval(x, t[i],a,b,c) - A3[i,:]
