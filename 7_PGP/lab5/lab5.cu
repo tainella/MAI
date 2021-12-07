@@ -158,15 +158,29 @@ void scan(int* counts, int* out, int blocks, int max_block_size) {
     CSC(cudaFree(block_sums));
 }
 
-__global__ void kernel(int* pref, unsigned char* out, int n, unsigned char* array)
+/*__global__ void kernel(int* pref, unsigned char* out, int n, unsigned char* array)
 {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     int offsetx = blockDim.x * gridDim.x;
 
     for(int i = n-1-idx; i >= 0; i -= offsetx){
+        printf("|%d| ",pref[array[i]+1]);
         out[atomicAdd(pref + array[i]+1, -1)-1] = array[i];
+    } 
+}
+*/
+
+__global__ void kernel(int* pref, unsigned char* out, int n){
+    int idx = blockDim.x * blockIdx.x +  threadIdx.x;
+    int step = blockDim.x * gridDim.x;
+
+    for(int tid = idx; tid < 257; tid += step){
+        int low = tid ? pref[tid-1] : 0;
+
+        for(int i = pref[tid] - 1; i >= low; --i){
+            out[i] = tid-1;
+        }
     }
-    
 }
 
 
@@ -189,8 +203,13 @@ __global__ void hist(unsigned char* array, int n, int* out) {
 int main() {
     int n;
     fread(&n, sizeof(int), 1, stdin);
+    //std::cin >> n;
     unsigned char* array = (unsigned char*)malloc(sizeof(unsigned char) * n); //uchar
     fread(array, sizeof(unsigned char), n, stdin);
+    /*for (int i = 0; i < n; i++) {
+        std::cin >> array[i];
+    }
+    */
     unsigned char* gpu_array;
     CSC(cudaMalloc(&gpu_array, sizeof(unsigned char) * n));
     CSC(cudaMemcpy(gpu_array, array, sizeof(unsigned char) * n, cudaMemcpyHostToDevice));
@@ -209,11 +228,16 @@ int main() {
     int* gpu_pref;
     CSC(cudaMalloc(&gpu_pref, sizeof(int) * 257));
     scan(gpu_counts, gpu_pref, 32, 32);
-    
+    int pref[257];
+    CSC(cudaMemcpy(pref, gpu_pref, sizeof(int) * 257, cudaMemcpyDeviceToHost));
     unsigned char* gpu_out;
     CSC(cudaMalloc(&gpu_out, sizeof(unsigned char) * n));
-    kernel<<<32,32>>>(gpu_pref, gpu_out, n, gpu_array);
+    kernel<<<32,32>>>(gpu_pref, gpu_out, n);
     CSC(cudaMemcpy(array, gpu_out, sizeof(unsigned char) * n, cudaMemcpyDeviceToHost));
     fwrite(array, sizeof(unsigned char), n, stdout);
+    /*for (int i = 0; i < n; i++) {
+        std::cout << array[i] << " ";
+    }
+    */
     return 0;
 }
