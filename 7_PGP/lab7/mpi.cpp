@@ -57,7 +57,7 @@ void tranfer(double** d_in, double** d_out, int* data_sizes, int* coords, int* s
     }
 }
 
-void import(double* buf, double** data, int* data_sizes, int* block_size){
+void count(double* buf, double** data, int* data_sizes, int* block_size){
     int start[3];
     int mu[3];
     int lm[3];
@@ -89,7 +89,19 @@ void import(double* buf, double** data, int* data_sizes, int* block_size){
     }
 }
 
+double max_det(double v1, double v2, double curr){
+    double diff = v1 - v2;
 
+    diff = diff < 0.0 ? -diff : diff;
+    return diff > curr ? diff : curr;
+}
+
+double u_new(double u_x0, double u_x1, double u_y0, double u_y1, double u_z0, double u_z1, double h2x, double h2y, double h2z) {
+    double ans = (u_x0 + u_x1) * h2x;
+    ans += (u_y0 + u_y1) * h2y;
+    ans += (u_z0 + u_z1) * h2z;
+    return ans;
+}
 
 int main(int argc, char *argv[]) {
     //входные данные
@@ -212,9 +224,22 @@ int main(int argc, char *argv[]) {
     while (max_diff >= eps) {
         MPI_Barrier(MPI_COMM_WORLD); //синхронизация процессов
 
-        //отправка и получение
-        tranfer(data, next, data_sizes, coords, shape, neighb_ranks, grid_comm);
-        import(buf[0], data, data_sizes, block_size);
+        tranfer(data, next, data_sizes, coords, shape, neighb_ranks, grid_comm); //отправка и получение
+        count(buf[0], data, data_sizes, block_size);
+
+        for(int k = 1; k <= block_size[2]; k++){
+            for(int j = 1; j <= block_size[1]; j++){
+                for(int i = 1; i <= block_size[0]; i++){
+                    buf[1][i + (shape[0] + 2)*(j + k*(shape[1] + 2))] = u_new(buf[0][i - 1 + (shape[0] + 2)*(j + k*(shape[1] + 2))], buf[0][i + 1 + (shape[0] + 2)*(j + k*(shape[1] + 2))],buf[0][i + (shape[0] + 2)*(j - 1 + k*(shape[1] + 2))],
+                    buf[0][i + (shape[0] + 2)*(j + 1 + k*(shape[1] + 2))], buf[0][i + (shape[0] + 2)*(j + (k-1)*(shape[1] + 2))], buf[0][i + (shape[0] + 2)*(j + (k+1)*(shape[1] + 2))],
+                    hx, hy, hz);
+                    max_diff = max_det(buf[0][i + (shape[0] + 2)*(j + k*(shape[1] + 2))], buf[1][i + (shape[0] + 2)*(j + k*(shape[1] + 2))], max_diff);
+                }
+            }
+        }
+
+        //заполнить перед передачей
+
     }
 
     MPI_Finalize();
