@@ -24,6 +24,40 @@ do { \
 #define front 4
 #define back 5
 
+void tranfer(double** d_in, double** d_out, int* data_sizes, int* coords, int* shape, int* neighb_ranks, MPI_Comm comm){
+    MPI_Request in[6], out[6]; // statuses of exchange beetwen processes
+    //отправка
+    for(int dir = 0; dir < 3; dir++){
+        int dd= dir << 1;
+        if(coords[dir]){
+            MPI_Isend(d_out[dd], data_sizes[dir], MPI_DOUBLE, neighb_ranks[dd], 0, comm, &out[dd]);
+
+            MPI_Irecv(d_in[dd], data_sizes[dir], MPI_DOUBLE, neighb_ranks[dd], 0, comm, &in[dd]);
+        }
+        if(coords[dir] < shape[dir] - 1){
+            MPI_Isend(d_out[dd + 1], data_sizes[dir], MPI_DOUBLE, neighb_ranks[dd + 1], 0, comm, &out[dd + 1]);
+            
+            MPI_Irecv(d_in[dd + 1], data_sizes[dir], MPI_DOUBLE, neighb_ranks[dd + 1], 0, comm, &in[dd + 1]);
+        }
+    }
+
+    // ожидание
+    for(int dir = 0; dir < 3; dir++){
+        int dd = dir << 1;
+        if(coords[dir] > 0){
+            MPI_Status temp;
+            MPI_Wait(&in[dd], &temp);
+            MPI_Wait(&out[dd], &temp);
+        }
+        if(coords[dir] < shape[dir] - 1){
+            MPI_Status temp;
+            MPI_Wait(&in[dd+1], &temp);
+            MPI_Wait(&out[dd+1], &temp);
+        }
+    }
+}
+
+
 int main(int argc, char *argv[]) {
     //входные данные
     int shape[3];
@@ -65,9 +99,9 @@ int main(int argc, char *argv[]) {
     MPI_Bcast(&u0, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     double hx, hy, hz;
-    hx = l[0] / ((double)shape[0] * block_size[0]);
-    hy = l[1] / ((double)shape[1] * block_size[1]);
-    hz = l[2] / ((double)shape[2] * block_size[2]);
+    hx = l_size[0] / ((double)shape[0] * block_size[0]);
+    hy = l_size[1] / ((double)shape[1] * block_size[1]);
+    hz = l_size[2] / ((double)shape[2] * block_size[2]);
 
     double* data[3];
     int data_sizes[3];
@@ -111,17 +145,6 @@ int main(int argc, char *argv[]) {
             next[2][_i(i, j, shape[1])] = u0;
         }
     }
-    //крайние точки
-    for(int dir = 0; dir < 3; ++dir){
-        int dd= dir << 1;
-        if (coord[dir] == 0) {
-            fill_n(data[dd], data_sizes[dir], u[dd]);
-        }
-        else if (coord[dir] == shape[dir] - 1) {
-            fill_n(data[dd+1], data_sizes[dir], u[dd+1]);
-        }
-    }
-
 
     int period[3], coords[3]; // координаты
     int neighb_ranks[6];
@@ -137,15 +160,27 @@ int main(int argc, char *argv[]) {
     MPI_Cart_coords(grid_comm, id, 3, coords); //получить координаты
 
     //ранги соседей
-    MPI_Cart_shift(grid_comm, dir_x, 1, &neighb_ranks[left], &neighb_ranks[right]);
-    MPI_Cart_shift(grid_comm, dir_y, 1, &neighb_ranks[front], &neighb_ranks[back]);
-    MPI_Cart_shift(grid_comm, dir_z, 1, &neighb_ranks[down], &neighb_ranks[up]);
+    MPI_Cart_shift(grid_comm, 0, 1, &neighb_ranks[left], &neighb_ranks[right]);
+    MPI_Cart_shift(grid_comm, 1, 1, &neighb_ranks[front], &neighb_ranks[back]);
+    MPI_Cart_shift(grid_comm, 2, 1, &neighb_ranks[down], &neighb_ranks[up]);
 
-    double max_diff = 1; // maximum error
+    //крайние точки
+    for(int dir = 0; dir < 3; ++dir){
+        int dd= dir << 1;
+        if (coords[dir] == 0) {
+            std::fill_n(data[dd], data_sizes[dir], u[dd]);
+        }
+        else if (coords[dir] == shape[dir] - 1) {
+            std::fill_n(data[dd+1], data_sizes[dir], u[dd+1]);
+        }
+    }
+
+    double max_diff = 1;
     while (max_diff >= eps) {
         MPI_Barrier(MPI_COMM_WORLD); //синхронизация процессов
 
-        //
+        //отправка и принятие
+        tranfer(data, next, data_sizes, coords, shape, neighb_ranks, grid_comm);
         
     }
 
