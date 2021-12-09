@@ -57,6 +57,39 @@ void tranfer(double** d_in, double** d_out, int* data_sizes, int* coords, int* s
     }
 }
 
+void import(double* buf, double** data, int* data_sizes, int* block_size){
+    int start[3];
+    int mu[3];
+    int lm[3];
+    int f[3];
+
+    for(int i = 0; i < 3; i++) { // инициализация
+        f[i] = block_size[i] + 2;
+        lm[i] = block_size[i] + 1;
+        mu[i] = 1;
+        start[i] = 1;
+    }
+
+    for(int dd = 0; dd < 6; dd++){
+        int dir = dd >> 1;
+        start[dir] = (block_size[dir] + 1) * (dd & 1);
+        lm[dir] = (dd & 1) ? (block_size[dir] + 2) : 1;
+        f[dir] = 1;
+        mu[dir] = 0;
+        for(int k = start[2]; k < lm[2]; ++k){
+            for(int j = start[1]; j < lm[1]; ++j){
+                for(int i = start[0]; i < lm[0]; ++i){
+                    buf[i + (j + k * (block_size[1] + 2)) * (block_size[0] + 2)] =
+                        data[dd][i * mu[0] + (j * mu[1] + k * mu[2] * f[1]) * f[0]];
+                }
+            }
+        }
+        f[dir] = lm[dir]--;
+        start[dir] = mu[dir] = 1;
+    }
+}
+
+
 
 int main(int argc, char *argv[]) {
     //входные данные
@@ -179,9 +212,9 @@ int main(int argc, char *argv[]) {
     while (max_diff >= eps) {
         MPI_Barrier(MPI_COMM_WORLD); //синхронизация процессов
 
-        //отправка и принятие
+        //отправка и получение
         tranfer(data, next, data_sizes, coords, shape, neighb_ranks, grid_comm);
-        
+        import(buf[0], data, data_sizes, block_size);
     }
 
     MPI_Finalize();
