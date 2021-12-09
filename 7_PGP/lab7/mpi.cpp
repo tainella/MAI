@@ -16,6 +16,14 @@ do { \
 
 #define _ib(i, j, b_size) (j * b_size + i)
 
+//по порядку ввода
+#define down 0
+#define up 1
+#define left 2
+#define right 3
+#define front 4
+#define back 5
+
 int main(int argc, char *argv[]) {
     //входные данные
     int shape[3];
@@ -62,45 +70,84 @@ int main(int argc, char *argv[]) {
     hz = l[2] / ((double)shape[2] * block_size[2]);
 
     double* data[3];
+    int data_sizes[3];
     double* next[3];
     data[0] = (double*)malloc(sizeof(double) * (shape[1] + 2) * (shape[2] + 2)); // y z
     next[0] = (double*)malloc(sizeof(double) * (shape[1] + 2) * (shape[2] + 2));
+    data_sizes[0] = (shape[1] + 2) * (shape[2] + 2);
+
     data[1] = (double*)malloc(sizeof(double) * (shape[0] + 2) * (shape[2] + 2)); // x z
     next[1] = (double*)malloc(sizeof(double) * (shape[0] + 2) * (shape[2] + 2));
+    data_sizes[1] = (shape[0] + 2) * (shape[2] + 2);
+
     data[2] = (double*)malloc(sizeof(double) * (shape[0] + 2) * (shape[1] + 2)); // x y
     next[2] = (double*)malloc(sizeof(double) * (shape[0] + 2) * (shape[1] + 2));
+    data_sizes[2] = (shape[0] + 2) * (shape[1] + 2);
 
     double* buf[2];
     buf[0] = (double*)malloc(sizeof(double) * (shape[0] + 2) * (shape[1] + 2) * (shape[2] + 2)); //x y z
     buf[1] = (double*)malloc(sizeof(double) * (shape[0] + 2) * (shape[1] + 2) * (shape[2] + 2));
-
-    //???
-    int buf_size;
-    MPI_Pack_size((shape[0] + 2) * (shape[1] + 2) * (shape[2] + 2), MPI_DOUBLE, MPI_COMM_WORLD, &buf_size);
-    buf_size = 4 * (buf_size + MPI_BSEND_OVERHEAD); //?
-    double* buffer = (double*)malloc(buf_size);
-    MPI_Buffer_attach(buffer, buf_size);
+    int bs = (shape[0] + 2) * (shape[1] + 2) * (shape[2] + 2);
+    for (int i = 0; i < bs; i++) {
+        buf[0][i] = u0;
+    }
 
     //инициализация
     for (int i = 0; i < shape[1]; i++){
         for (int j = 0; j < shape[2]; j++){
-            data[0][_i(i, j, shape[2])] = u0;
-            //next[0][_i(i, j, shape[2])] = u0;
+            next[0][_i(i, j, shape[2])] = u0; //y z
         }
     }
+
     for (int i = 0; i < shape[0]; i++){
         for (int j = 0; j < shape[2]; j++){
-            data[1][_i(i, j, shape[2])] = u0;
-            //next[0][_i(i, j, shape[2])] = u0;
+            //data[1][_i(i, j, shape[2])] = u0; // x z
+            next[1][_i(i, j, shape[2])] = u0;
         }
     }
     for (int i = 0; i < shape[0]; i++){
         for (int j = 0; j < shape[1]; j++){
-            data[2][_i(i, j, shape[1])] = u0;
-            //next[0][_i(i, j, shape[2])] = u0;
+            //data[2][_i(i, j, shape[1])] = u0; // x y
+            next[2][_i(i, j, shape[1])] = u0;
         }
     }
-    
+    //крайние точки
+    for(int dir = 0; dir < 3; ++dir){
+        int dd= dir << 1;
+        if (coord[dir] == 0) {
+            fill_n(data[dd], data_sizes[dir], u[dd]);
+        }
+        else if (coord[dir] == shape[dir] - 1) {
+            fill_n(data[dd+1], data_sizes[dir], u[dd+1]);
+        }
+    }
+
+
+    int period[3], coords[3]; // координаты
+    int neighb_ranks[6];
+    period[0] = 0;
+    period[1] = 0;
+    period[2] = 0;
+    MPI_Comm grid_comm; // коммуникатор
+
+    //топология
+    MPI_Cart_create(MPI_COMM_WORLD, 3, shape, period, false, &grid_comm); //новый коммуникатор для топологии
+    MPI_Comm_rank(grid_comm, &id); //получение нового ранга
+    MPI_Comm_size(grid_comm, &numproc); //получить число процессов
+    MPI_Cart_coords(grid_comm, id, 3, coords); //получить координаты
+
+    //ранги соседей
+    MPI_Cart_shift(grid_comm, dir_x, 1, &neighb_ranks[left], &neighb_ranks[right]);
+    MPI_Cart_shift(grid_comm, dir_y, 1, &neighb_ranks[front], &neighb_ranks[back]);
+    MPI_Cart_shift(grid_comm, dir_z, 1, &neighb_ranks[down], &neighb_ranks[up]);
+
+    double max_diff = 1; // maximum error
+    while (max_diff >= eps) {
+        MPI_Barrier(MPI_COMM_WORLD); //синхронизация процессов
+
+        //
+        
+    }
 
     MPI_Finalize();
 
