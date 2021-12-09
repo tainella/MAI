@@ -5,67 +5,108 @@
 
 #define CSC(call)  \
 do { \
-	cudaError_t state = call; \
-	if (state != cudaSuccess) { \
-		fprintf(stderr, "ERROR: %s:%d. Message: %s\n", __FILE__,__LINE__,cudaGetErrorString(state)); \
-		exit(0); \
-	} \
+    cudaError_t state = call; \
+    if (state != cudaSuccess) { \
+        fprintf(stderr, "ERROR: %s:%d. Message: %s\n", __FILE__,__LINE__,cudaGetErrorString(state)); \
+        exit(0); \
+    } \
 } while (0); \
 
+#define _i(i, j, j_size) ((j + 1) * (j_size+2) + i + 1)
+
+#define _ib(i, j, b_size) (j * b_size + i)
+
 int main(int argc, char *argv[]) {
-	int shape[3];
-	std::cin >> shape[0] >> shape[1] >> shape[2];
+    //входные данные
+    int shape[3];
+    int block_size[3];
+    std::string out_name;
+    double eps;
+    double l_size[3];
+    double u[6];
+    double u0;
 
-	int block_size[3];
-	std::cin >> block_size[0] >> block_size[1] >> block_size[2];
+    //данные для работы
+    int id, numproc;
 
-	std::string out_name;
-	std::cin >> out_name;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &numproc);
+    MPI_Comm_rank(MPI_COMM_WORLD, &id);
+    fprintf(stderr, "%d(%d)\n", id, numproc);
 
-	double eps;
-	std::cin >> eps;
+    MPI_Barrier(MPI_COMM_WORLD); //синхронизация
 
-	double l_size[3];
-	std::cin >> l_size[0] >> l_size[1] >> l_size[2];
+    if (id == 0) { //считывает первый процесс
+        std::cin >> shape[0] >> shape[1] >> shape[2];
+        std::cin >> block_size[0] >> block_size[1] >> block_size[2];
+        std::cin >> out_name;
+        std::cin >> eps;
+        std::cin >> l_size[0] >> l_size[1] >> l_size[2];
+        for (int i = 0; i < 6; i++) {
+            std::cin >> u[i];
+        }
+        std::cin >> u0;
+    }
 
-	double u[6];
-	for (int i = 0; i < 6; i++) {
-		std::cin >> u[i];
-	}
-	double u0;
-	std::cin >> u0;
+    //пересылаем всем другим процессам данные
+    MPI_Bcast(shape, 3, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(block_size, 3, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&eps, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(l_size, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(u, 6, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&u0, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-	MPI_Init(&argc, &argv);
-	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	fprintf(stderr, "%d(%d)\n", rank, nprocs);
+    double hx, hy, hz;
+    hx = l[0] / ((double)shape[0] * block_size[0]);
+    hy = l[1] / ((double)shape[1] * block_size[1]);
+    hz = l[2] / ((double)shape[2] * block_size[2]);
 
-/*	for(i = 0; i < n; i++)
-		data[i] = rank * 16 + i; */
+    double* data[3];
+    double* next[3];
+    data[0] = (double*)malloc(sizeof(double) * (shape[1] + 2) * (shape[2] + 2)); // y z
+    next[0] = (double*)malloc(sizeof(double) * (shape[1] + 2) * (shape[2] + 2));
+    data[1] = (double*)malloc(sizeof(double) * (shape[0] + 2) * (shape[2] + 2)); // x z
+    next[1] = (double*)malloc(sizeof(double) * (shape[0] + 2) * (shape[2] + 2));
+    data[2] = (double*)malloc(sizeof(double) * (shape[0] + 2) * (shape[1] + 2)); // x y
+    next[2] = (double*)malloc(sizeof(double) * (shape[0] + 2) * (shape[1] + 2));
 
-	MPI_File fp;
-	MPI_Datatype arraytype;
+    double* buf[2];
+    buf[0] = (double*)malloc(sizeof(double) * (shape[0] + 2) * (shape[1] + 2) * (shape[2] + 2)); //x y z
+    buf[1] = (double*)malloc(sizeof(double) * (shape[0] + 2) * (shape[1] + 2) * (shape[2] + 2));
 
-	MPI_Type_contiguous(n, MPI_INT, &arraytype);
-	MPI_Type_commit(&arraytype);
+    //???
+    int buf_size;
+    MPI_Pack_size((shape[0] + 2) * (shape[1] + 2) * (shape[2] + 2), MPI_DOUBLE, MPI_COMM_WORLD, &buf_size);
+    buf_size = 4 * (buf_size + MPI_BSEND_OVERHEAD); //?
+    double* buffer = (double*)malloc(buf_size);
+    MPI_Buffer_attach(buffer, buf_size);
 
-//	MPI_File_delete("data", MPI_INFO_NULL);
-//	MPI_File_open(MPI_COMM_WORLD, "data", MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
-	MPI_File_open(MPI_COMM_WORLD, "data", MPI_MODE_RDONLY, MPI_INFO_NULL, &fp);
-	MPI_File_set_view(fp, rank * n * sizeof(int), MPI_INT, arraytype, "native", MPI_INFO_NULL);
+    //инициализация
+    for (int i = 0; i < shape[1]; i++){
+        for (int j = 0; j < shape[2]; j++){
+            data[0][_i(i, j, shape[2])] = u0;
+            //next[0][_i(i, j, shape[2])] = u0;
+        }
+    }
+    for (int i = 0; i < shape[0]; i++){
+        for (int j = 0; j < shape[2]; j++){
+            data[1][_i(i, j, shape[2])] = u0;
+            //next[0][_i(i, j, shape[2])] = u0;
+        }
+    }
+    for (int i = 0; i < shape[0]; i++){
+        for (int j = 0; j < shape[1]; j++){
+            data[2][_i(i, j, shape[1])] = u0;
+            //next[0][_i(i, j, shape[2])] = u0;
+        }
+    }
+    
 
-//	MPI_File_write(fp, data, n, MPI_INT, MPI_STATUS_IGNORE);
-	MPI_File_read(fp, data, n, MPI_INT, MPI_STATUS_IGNORE);
+    MPI_Finalize();
 
-	printf("%d: ", rank);
-	for(i = 0; i < n; i++)
-		printf("%d ", data[i]);
-	printf("\n");
+    for (int i = 0; i < 3; i++) {
+        free(data[i]);
+    }
 
-	MPI_File_close(&fp);
-
-	MPI_Finalize();
-	free(data);
-
-	return 0;
+    return 0;
 }
