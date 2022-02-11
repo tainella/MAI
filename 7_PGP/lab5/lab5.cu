@@ -50,7 +50,7 @@ __global__ void gpu_add_block_sums(int* out, int* const in, int* block_sums)
     }
 }
 
-__global__ void prescan(int* d_out, int* d_in, int* block_sums, int shmem_size, int blocks) {
+__global__ void prescan(int* d_out, const int* d_in, int* block_sums, int shmem_size, int blocks) {
     int max_block_size = 256;
     __shared__ int temp[257];
 
@@ -65,6 +65,9 @@ __global__ void prescan(int* d_out, int* d_in, int* block_sums, int shmem_size, 
     __syncthreads();
 
     int cpy_idx = max_block_size * blockIdx.x + threadIdx.x;
+    if (cpy_idx == 0) {
+        printf("a[%d]=%d\n", ai + no_conflict_offset(ai, blocks), d_in[cpy_idx]);
+    }
     if (cpy_idx < 257)
     {
         temp[ai + no_conflict_offset(ai, blocks)] = d_in[cpy_idx];
@@ -73,7 +76,6 @@ __global__ void prescan(int* d_out, int* d_in, int* block_sums, int shmem_size, 
         }
     }
 
-    
     int offset = 1;
     for (int d = max_block_size >> 1; d > 0; d >>= 1)
     {
@@ -96,7 +98,7 @@ __global__ void prescan(int* d_out, int* d_in, int* block_sums, int shmem_size, 
         block_sums[blockIdx.x] = temp[max_block_size - 1 + no_conflict_offset(max_block_size - 1, blocks)];
         temp[max_block_size - 1 + no_conflict_offset(max_block_size - 1, blocks)] = 0;
     }
-    for (int d = 1; d < max_block_size; d <<= 1)
+    for (int d = 1; d < max_block_size; d <<= 1) //d = 0? //d++?
     {
         offset >>= 1;
         __syncthreads();
@@ -122,7 +124,8 @@ __global__ void prescan(int* d_out, int* d_in, int* block_sums, int shmem_size, 
     }
 }
  
-void scan(int* counts, int* out, int blocks) {
+void scan(int* counts, int* out) {
+    int blocks = 1;
     int max_block_size = 256;
     CSC(cudaMemset(out, 0, 257 * sizeof(int)));
     int block_size = max_block_size / 2;
@@ -132,6 +135,7 @@ void scan(int* counts, int* out, int blocks) {
         grid_size += 1;
     }
     int shmem_size = max_block_size + ((max_block_size) >> what_pow_h(blocks)); //к примеру 5
+    printf("grid=%d  shmem_size=%d\n", grid_size, shmem_size);
     int* block_sums;
     CSC(cudaMalloc(&block_sums, sizeof(int) * grid_size));
     CSC(cudaMemset(block_sums, 0, sizeof(int) * grid_size));
@@ -209,7 +213,7 @@ int main() {
     CSC(cudaMalloc(&gpu_pref, sizeof(int) * 257));
     int pref[257];
 
-    scan(gpu_counts, gpu_pref, 2);
+    scan(gpu_counts, gpu_pref);
     //prescan(gpu_counts, gpu_pref, 32, 32);
 
     unsigned char* gpu_out;
