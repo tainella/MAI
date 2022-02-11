@@ -50,7 +50,8 @@ __global__ void gpu_add_block_sums(int* out, int* const in, int* block_sums)
     }
 }
 
-__global__ void prescan(int* d_out, int* d_in, int* block_sums, int shmem_size, int blocks, int max_block_size) {
+__global__ void prescan(int* d_out, int* d_in, int* block_sums, int shmem_size, int blocks) {
+    int max_block_size = 256;
     __shared__ int temp[257];
 
     int idx = threadIdx.x;
@@ -67,10 +68,12 @@ __global__ void prescan(int* d_out, int* d_in, int* block_sums, int shmem_size, 
     if (cpy_idx < 257)
     {
         temp[ai + no_conflict_offset(ai, blocks)] = d_in[cpy_idx];
-        if (cpy_idx + blockDim.x < 257)
+        if (cpy_idx + blockDim.x < 257) {
             temp[bi + no_conflict_offset(bi, blocks)] = d_in[cpy_idx + blockDim.x];
+        }
     }
 
+    
     int offset = 1;
     for (int d = max_block_size >> 1; d > 0; d >>= 1)
     {
@@ -119,7 +122,8 @@ __global__ void prescan(int* d_out, int* d_in, int* block_sums, int shmem_size, 
     }
 }
  
-void scan(int* counts, int* out, int blocks, int max_block_size) {
+void scan(int* counts, int* out, int blocks) {
+    int max_block_size = 256;
     CSC(cudaMemset(out, 0, 257 * sizeof(int)));
     int block_size = max_block_size / 2;
     int grid_size = 257 / max_block_size;
@@ -132,43 +136,19 @@ void scan(int* counts, int* out, int blocks, int max_block_size) {
     CSC(cudaMalloc(&block_sums, sizeof(int) * grid_size));
     CSC(cudaMemset(block_sums, 0, sizeof(int) * grid_size));
 
-    prescan<<<grid_size, block_size, sizeof(int) * shmem_size>>>(out, counts, block_sums, shmem_size, blocks, max_block_size);
+    prescan<<<grid_size, block_size, sizeof(int) * shmem_size>>>(out, counts, block_sums, shmem_size, blocks);
+    
+    int* d_dummy_blocks_sums;
+    CSC(cudaMalloc(&d_dummy_blocks_sums, sizeof(int)));
+    CSC(cudaMemset(d_dummy_blocks_sums, 0, sizeof(int)));
 
-    if (grid_size <= max_block_size)
-    {
-        int* d_dummy_blocks_sums;
-        CSC(cudaMalloc(&d_dummy_blocks_sums, sizeof(int)));
-        CSC(cudaMemset(d_dummy_blocks_sums, 0, sizeof(int)));
-
-        prescan<<<1, block_size, sizeof(int) * shmem_size>>>(block_sums, block_sums, d_dummy_blocks_sums, grid_size, shmem_size, max_block_size);
+    prescan<<<1, block_size, sizeof(int) * shmem_size>>>(block_sums, block_sums, d_dummy_blocks_sums, grid_size, shmem_size);
         
-        CSC(cudaFree(d_dummy_blocks_sums));
-    }
-    else
-    {
-        int* d_in_block_sums;
-        CSC(cudaMalloc(&d_in_block_sums, sizeof(int) * grid_size));
-        CSC(cudaMemcpy(d_in_block_sums, block_sums, sizeof(int) * grid_size, cudaMemcpyDeviceToDevice));
+    CSC(cudaFree(d_dummy_blocks_sums));
 
-        scan(block_sums, d_in_block_sums, blocks, grid_size);
-
-        CSC(cudaFree(d_in_block_sums));
-    }
     gpu_add_block_sums<<<grid_size, block_size>>>(out, out, block_sums);
     CSC(cudaFree(block_sums));
 }
-
-/*__global__ void kernel(int* pref, unsigned char* out, int n, unsigned char* array)
-{
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    int offsetx = blockDim.x * gridDim.x;
-
-    for(int i = n-1-idx; i >= 0; i -= offsetx){
-        printf("|%d| ",pref[array[i]+1]);
-        out[atomicAdd(pref + array[i]+1, -1)-1] = array[i];
-    } 
-}
-*/
 
 __global__ void kernel(int* pref, unsigned char* out, int n){
     int idx = blockDim.x * blockIdx.x +  threadIdx.x;
@@ -186,7 +166,6 @@ __global__ void kernel(int* pref, unsigned char* out, int n){
 
 __global__ void hist(unsigned char* array, int n, int* out) {
     __shared__ int temp[257];
-    
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     int offsetx = blockDim.x * gridDim.x;
 
@@ -195,7 +174,7 @@ __global__ void hist(unsigned char* array, int n, int* out) {
     }
     __syncthreads();
     if (idx == 0)
-    for(int i = 0; i < 257; i ++) {
+    for(int i = 0; i < 257; i++) {
         atomicAdd(out + i, *(temp + i));
     }
 }
@@ -203,13 +182,11 @@ __global__ void hist(unsigned char* array, int n, int* out) {
 int main() {
     int n;
     fread(&n, sizeof(int), 1, stdin);
-    //std::cin >> n;
     unsigned char* array = (unsigned char*)malloc(sizeof(unsigned char) * n); //uchar
-    fread(array, sizeof(unsigned char), n, stdin);
-    /*for (int i = 0; i < n; i++) {
-        std::cin >> array[i];
-    }
-    */
+    if (fread(array, sizeof(unsigned char), n, stdin) != n) {
+        std::cout << "не считал\n";
+    };
+
     unsigned char* gpu_array;
     CSC(cudaMalloc(&gpu_array, sizeof(unsigned char) * n));
     CSC(cudaMemcpy(gpu_array, array, sizeof(unsigned char) * n, cudaMemcpyHostToDevice));
@@ -221,23 +198,35 @@ int main() {
     int* gpu_counts;
     CSC(cudaMalloc(&gpu_counts, sizeof(int) * 257));
     CSC(cudaMemcpy(gpu_counts, counts, sizeof(int) * 257, cudaMemcpyHostToDevice));
-    
+
     hist<<<32,32>>>(gpu_array, n, gpu_counts);
     CSC(cudaMemcpy(counts, gpu_counts, sizeof(int) * 257, cudaMemcpyDeviceToHost));
-
+    for (int i = 0; i < 257; i++) {
+        std::cout << counts[i] << " ";
+    }
+    std::cout << "\n|\n";
     int* gpu_pref;
     CSC(cudaMalloc(&gpu_pref, sizeof(int) * 257));
-    scan(gpu_counts, gpu_pref, 32, 32);
     int pref[257];
-    CSC(cudaMemcpy(pref, gpu_pref, sizeof(int) * 257, cudaMemcpyDeviceToHost));
+
+    scan(gpu_counts, gpu_pref, 2);
+    //prescan(gpu_counts, gpu_pref, 32, 32);
+
     unsigned char* gpu_out;
     CSC(cudaMalloc(&gpu_out, sizeof(unsigned char) * n));
+    CSC(cudaMemset(gpu_out, 0, sizeof(unsigned char) * n));
+
     kernel<<<32,32>>>(gpu_pref, gpu_out, n);
-    CSC(cudaMemcpy(array, gpu_out, sizeof(unsigned char) * n, cudaMemcpyDeviceToHost));
-    fwrite(array, sizeof(unsigned char), n, stdout);
-    /*for (int i = 0; i < n; i++) {
-        std::cout << array[i] << " ";
+
+    CSC(cudaMemcpy(pref, gpu_pref, sizeof(int) * 257, cudaMemcpyDeviceToHost));
+    for (int i = 0; i < 257; i++) {
+        std::cout << pref[i] << " ";
     }
-    */
+    std::cout << "\n|\n";
+    CSC(cudaMemcpy(array, gpu_out, sizeof(unsigned char) * n, cudaMemcpyDeviceToHost));
+    //fwrite(array, sizeof(unsigned char), n, stdout);
+    for (int i = n - 100; i < n; i++) {
+        printf("%02X ", array[i]);
+    }
     return 0;
 }
