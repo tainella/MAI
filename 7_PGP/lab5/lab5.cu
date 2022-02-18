@@ -7,6 +7,8 @@
 #include <thrust/extrema.h>
 #include <thrust/device_vector.h>
 
+#define THREAD_NUM 1024
+
 #define CSC(call)  \
 do { \
 	cudaError_t state = call; \
@@ -42,21 +44,21 @@ __global__ void gpu_add_block_sums(int* out, int* const in, int* block_sums)
 { 
     int d_block_sum_val = block_sums[blockIdx.x];
     int cpy_idx = 2 * blockIdx.x * blockDim.x + threadIdx.x;
-    if (cpy_idx < 257)
+    if (cpy_idx < 256)
     {
         out[cpy_idx] = in[cpy_idx] + d_block_sum_val;
-        if (cpy_idx + blockDim.x < 257)
+        if (cpy_idx + blockDim.x < 256)
             out[cpy_idx + blockDim.x] = in[cpy_idx + blockDim.x] + d_block_sum_val;
     }
 }
 
-__global__ void prescan(int* d_out, const int* d_in, int* block_sums, int shmem_size, int blocks) {
-    int max_block_size = 256;
-    __shared__ int temp[257];
+__global__ void prescan(int* d_out, const int* d_in, int blocks) {
+    int sum;
+    int max_block_size = 256; //256
+    __shared__ int temp[256];
 
     int idx = threadIdx.x;
     int ai = idx;
-    int bi = idx + blockDim.x;
 
     temp[idx] = 0;
     temp[idx + blockDim.x] = 0;
@@ -64,16 +66,11 @@ __global__ void prescan(int* d_out, const int* d_in, int* block_sums, int shmem_
     
     __syncthreads();
 
-    int cpy_idx = max_block_size * blockIdx.x + threadIdx.x;
-    if (cpy_idx == 0) {
-        printf("a[%d]=%d\n", ai + no_conflict_offset(ai, blocks), d_in[cpy_idx]);
-    }
-    if (cpy_idx < 257)
+    int cpy_idx =  max_block_size * blockIdx.x + threadIdx.x;
+
+    if (cpy_idx < 256)
     {
         temp[ai + no_conflict_offset(ai, blocks)] = d_in[cpy_idx];
-        if (cpy_idx + blockDim.x < 257) {
-            temp[bi + no_conflict_offset(bi, blocks)] = d_in[cpy_idx + blockDim.x];
-        }
     }
 
     int offset = 1;
@@ -93,76 +90,54 @@ __global__ void prescan(int* d_out, const int* d_in, int* block_sums, int shmem_
         offset <<= 1;
     }
     
-    if (idx == 0) 
-    { 
-        block_sums[blockIdx.x] = temp[max_block_size - 1 + no_conflict_offset(max_block_size - 1, blocks)];
-        temp[max_block_size - 1 + no_conflict_offset(max_block_size - 1, blocks)] = 0;
+    if (idx == 0) { 
+        for (int i = 0; i < 256; i++) {
+            printf("%d ", temp[i]);
+        }
+        printf("|\n");
+        sum = temp[255];
+        printf("\nsum:%d\n", sum);
+        temp[255] = 0;
     }
-    for (int d = 1; d < max_block_size; d <<= 1) //d = 0? //d++?
-    {
+    //обратный ход
+    for (int d = 1; d < max_block_size; d <<= 1) {
         offset >>= 1;
         __syncthreads();
 
         if (idx < d)
         {
-            int ai = offset * ((idx << 1) + 1) - 1;
-            int bi = offset * ((idx << 1) + 2) - 1;
-            ai += no_conflict_offset(ai, blocks);
-            bi += no_conflict_offset(bi, blocks);
+            int i1 = offset * ((idx << 1) + 1) - 1;
+            int i2 = offset * ((idx << 1) + 2) - 1;
+            i1 += no_conflict_offset(i1, blocks);
+            i2 += no_conflict_offset(i2, blocks);
 
-            unsigned int t = temp[ai];
-            temp[ai] = temp[bi];
-            temp[bi] += t;
+            int t = temp[i1];
+            temp[i1] = temp[i2];
+            temp[i2] += t;
         }
     }
     __syncthreads();
-    if (cpy_idx < 257)
-    {
-        d_out[cpy_idx] = temp[ai + no_conflict_offset(ai, blocks)];
-        if (cpy_idx + blockDim.x < 257)
-            d_out[cpy_idx + blockDim.x] = temp[bi + no_conflict_offset(bi, blocks)];
+
+    if (ai == 0) {
+         d_out[255] = sum;
+    }
+    else {
+        printf("blockDim.x=%d", blockDim.x);
+        /*for (;ai < 256; ai += 256/blockDim.x) {
+            d_out[ai] = temp[ai + no_conflict_offset(ai, blocks)];
+        }*/
     }
 }
- 
-void scan(int* counts, int* out) {
-    int blocks = 1;
-    int max_block_size = 256;
-    CSC(cudaMemset(out, 0, 257 * sizeof(int)));
-    int block_size = max_block_size / 2;
-    int grid_size = 257 / max_block_size;
-    
-    if (257 % max_block_size != 0) {
-        grid_size += 1;
-    }
-    int shmem_size = max_block_size + ((max_block_size) >> what_pow_h(blocks)); //к примеру 5
-    printf("grid=%d  shmem_size=%d\n", grid_size, shmem_size);
-    int* block_sums;
-    CSC(cudaMalloc(&block_sums, sizeof(int) * grid_size));
-    CSC(cudaMemset(block_sums, 0, sizeof(int) * grid_size));
 
-    prescan<<<grid_size, block_size, sizeof(int) * shmem_size>>>(out, counts, block_sums, shmem_size, blocks);
-    
-    int* d_dummy_blocks_sums;
-    CSC(cudaMalloc(&d_dummy_blocks_sums, sizeof(int)));
-    CSC(cudaMemset(d_dummy_blocks_sums, 0, sizeof(int)));
-
-    prescan<<<1, block_size, sizeof(int) * shmem_size>>>(block_sums, block_sums, d_dummy_blocks_sums, grid_size, shmem_size);
-        
-    CSC(cudaFree(d_dummy_blocks_sums));
-
-    gpu_add_block_sums<<<grid_size, block_size>>>(out, out, block_sums);
-    CSC(cudaFree(block_sums));
-}
-
-__global__ void kernel(int* pref, unsigned char* out, int n){
+__global__ void kernel(int* pref, unsigned char* out){
     int idx = blockDim.x * blockIdx.x +  threadIdx.x;
     int step = blockDim.x * gridDim.x;
 
-    for(int tid = idx; tid < 257; tid += step){
+    for(int tid = idx; tid < 256; tid += step){
         int low = tid ? pref[tid-1] : 0;
 
-        for(int i = pref[tid] - 1; i >= low; --i){
-            out[i] = tid-1;
+        for(int i = pref[tid] - 1; i >= low; --i){ //-1
+            out[i] = tid - 1; //-1
         }
     }
 }
@@ -190,46 +165,51 @@ int main() {
     if (fread(array, sizeof(unsigned char), n, stdin) != n) {
         std::cout << "не считал\n";
     };
-
+    for (int i = n - 200; i < n; i++) {
+        printf("%02X ", array[i]);
+    }
+    printf("\n|");
     unsigned char* gpu_array;
     CSC(cudaMalloc(&gpu_array, sizeof(unsigned char) * n));
     CSC(cudaMemcpy(gpu_array, array, sizeof(unsigned char) * n, cudaMemcpyHostToDevice));
     
-    int* counts = (int*)malloc(sizeof(int) * 257);
-    for (int i = 0; i < 257; i++) {
+    int* counts = (int*)malloc(sizeof(int) * 256);
+    for (int i = 0; i < 256; i++) {
         counts[i] = 0;
     }
     int* gpu_counts;
-    CSC(cudaMalloc(&gpu_counts, sizeof(int) * 257));
-    CSC(cudaMemcpy(gpu_counts, counts, sizeof(int) * 257, cudaMemcpyHostToDevice));
+    CSC(cudaMalloc(&gpu_counts, sizeof(int) * 256));
+    CSC(cudaMemcpy(gpu_counts, counts, sizeof(int) * 256, cudaMemcpyHostToDevice));
+
+    int* gpu_pref;
+    CSC(cudaMalloc(&gpu_pref, sizeof(int) * 256));
 
     hist<<<32,32>>>(gpu_array, n, gpu_counts);
-    CSC(cudaMemcpy(counts, gpu_counts, sizeof(int) * 257, cudaMemcpyDeviceToHost));
-    for (int i = 0; i < 257; i++) {
+    CSC(cudaMemcpy(counts, gpu_counts, sizeof(int) * 256, cudaMemcpyDeviceToHost));
+    for (int i = 0; i < 256; i++) {
         std::cout << counts[i] << " ";
     }
     std::cout << "\n|\n";
-    int* gpu_pref;
-    CSC(cudaMalloc(&gpu_pref, sizeof(int) * 257));
-    int pref[257];
+    int pref[256];
 
-    scan(gpu_counts, gpu_pref);
-    //prescan(gpu_counts, gpu_pref, 32, 32);
+    prescan<<<1,32>>>(gpu_pref, gpu_counts, 1);
+    //scan(gpu_counts, gpu_pref);
+    CSC(cudaMemcpy(pref, gpu_pref, sizeof(int) * 256, cudaMemcpyDeviceToHost));
+    for (int i = 0; i < 256; i++) {
+        std::cout << pref[i] << " ";
+    }
+    
 
     unsigned char* gpu_out;
     CSC(cudaMalloc(&gpu_out, sizeof(unsigned char) * n));
     CSC(cudaMemset(gpu_out, 0, sizeof(unsigned char) * n));
 
-    kernel<<<32,32>>>(gpu_pref, gpu_out, n);
+    kernel<<<32,32>>>(gpu_counts, gpu_out);
 
-    CSC(cudaMemcpy(pref, gpu_pref, sizeof(int) * 257, cudaMemcpyDeviceToHost));
-    for (int i = 0; i < 257; i++) {
-        std::cout << pref[i] << " ";
-    }
     std::cout << "\n|\n";
     CSC(cudaMemcpy(array, gpu_out, sizeof(unsigned char) * n, cudaMemcpyDeviceToHost));
     //fwrite(array, sizeof(unsigned char), n, stdout);
-    for (int i = n - 100; i < n; i++) {
+    for (int i = n - 200; i < n; i++) {
         printf("%02X ", array[i]);
     }
     return 0;
