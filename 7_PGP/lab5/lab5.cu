@@ -54,7 +54,7 @@ __global__ void gpu_add_block_sums(int* out, int* const in, int* block_sums)
 
 __global__ void prescan(int* d_out, const int* d_in, int blocks) {
     int sum;
-    int max_block_size = 256; //256
+    int max_block_size = 256; //128
     __shared__ int temp[256];
 
     int idx = threadIdx.x;
@@ -89,12 +89,7 @@ __global__ void prescan(int* d_out, const int* d_in, int blocks) {
         }
         offset <<= 1;
     }
-    
     if (idx == 0) { 
-        for (int i = 0; i < 256; i++) {
-            printf("%d ", temp[i]);
-        }
-        printf("|\n");
         sum = temp[255];
         printf("\nsum:%d\n", sum);
         temp[255] = 0;
@@ -117,15 +112,13 @@ __global__ void prescan(int* d_out, const int* d_in, int blocks) {
         }
     }
     __syncthreads();
-
-    if (ai == 0) {
+    if (cpy_idx == 0) { //переделать из исключающего в включающий
          d_out[255] = sum;
     }
     else {
-        printf("blockDim.x=%d", blockDim.x);
-        /*for (;ai < 256; ai += 256/blockDim.x) {
-            d_out[ai] = temp[ai + no_conflict_offset(ai, blocks)];
-        }*/
+        if (cpy_idx < 256) {
+            d_out[cpy_idx - 1] = temp[ai + no_conflict_offset(ai, blocks)];   
+        }
     }
 }
 
@@ -133,7 +126,7 @@ __global__ void kernel(int* pref, unsigned char* out){
     int idx = blockDim.x * blockIdx.x +  threadIdx.x;
     int step = blockDim.x * gridDim.x;
 
-    for(int tid = idx; tid < 256; tid += step){
+    for (int tid = idx; tid < 256; tid += step){
         int low = tid ? pref[tid-1] : 0;
 
         for(int i = pref[tid] - 1; i >= low; --i){ //-1
@@ -183,6 +176,7 @@ int main() {
 
     int* gpu_pref;
     CSC(cudaMalloc(&gpu_pref, sizeof(int) * 256));
+    CSC(cudaMemset(gpu_pref, 0, sizeof(int) * 256));
 
     hist<<<32,32>>>(gpu_array, n, gpu_counts);
     CSC(cudaMemcpy(counts, gpu_counts, sizeof(int) * 256, cudaMemcpyDeviceToHost));
@@ -192,8 +186,7 @@ int main() {
     std::cout << "\n|\n";
     int pref[256];
 
-    prescan<<<1,32>>>(gpu_pref, gpu_counts, 1);
-    //scan(gpu_counts, gpu_pref);
+    prescan<<<1,128>>>(gpu_pref, gpu_counts, 1);
     CSC(cudaMemcpy(pref, gpu_pref, sizeof(int) * 256, cudaMemcpyDeviceToHost));
     for (int i = 0; i < 256; i++) {
         std::cout << pref[i] << " ";
