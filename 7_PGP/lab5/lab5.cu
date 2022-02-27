@@ -40,18 +40,6 @@ __device__  int no_conflict_offset(int n, int banks) {
     return ((n) >> banks + (n) >> (2 * what_pow(banks)));
 }
 
-__global__ void gpu_add_block_sums(int* out, int* const in, int* block_sums)
-{ 
-    int d_block_sum_val = block_sums[blockIdx.x];
-    int cpy_idx = 2 * blockIdx.x * blockDim.x + threadIdx.x;
-    if (cpy_idx < 256)
-    {
-        out[cpy_idx] = in[cpy_idx] + d_block_sum_val;
-        if (cpy_idx + blockDim.x < 256)
-            out[cpy_idx + blockDim.x] = in[cpy_idx + blockDim.x] + d_block_sum_val;
-    }
-}
-
 __global__ void prescan(int* d_out, const int* d_in, int blocks) {
     int sum;
     int max_block_size = 256; //128
@@ -62,7 +50,6 @@ __global__ void prescan(int* d_out, const int* d_in, int blocks) {
 
     temp[idx] = 0;
     temp[idx + blockDim.x] = 0;
-    temp[idx + blockDim.x + (blockDim.x >> what_pow(blocks))] = 0;
     
     __syncthreads();
 
@@ -70,7 +57,8 @@ __global__ void prescan(int* d_out, const int* d_in, int blocks) {
 
     if (cpy_idx < 256)
     {
-        temp[ai + no_conflict_offset(ai, blocks)] = d_in[cpy_idx];
+        //temp[ai + no_conflict_offset(ai, blocks)] = d_in[cpy_idx];
+        temp[ai] = d_in[cpy_idx];
     }
 
     int offset = 1;
@@ -82,16 +70,15 @@ __global__ void prescan(int* d_out, const int* d_in, int blocks) {
         {
             int ai = offset * ((idx << 1) + 1) - 1;
             int bi = offset * ((idx << 1) + 2) - 1;
-            ai += no_conflict_offset(ai, blocks);
-            bi += no_conflict_offset(bi, blocks);
-
+            //ai += no_conflict_offset(ai, blocks);
+            //bi += no_conflict_offset(bi, blocks);
+           // assert(bi < 256);
             temp[bi] += temp[ai];
         }
         offset <<= 1;
     }
     if (idx == 0) { 
         sum = temp[255];
-        printf("\nsum:%d\n", sum);
         temp[255] = 0;
     }
     //обратный ход
@@ -103,8 +90,8 @@ __global__ void prescan(int* d_out, const int* d_in, int blocks) {
         {
             int i1 = offset * ((idx << 1) + 1) - 1;
             int i2 = offset * ((idx << 1) + 2) - 1;
-            i1 += no_conflict_offset(i1, blocks);
-            i2 += no_conflict_offset(i2, blocks);
+            //i1 += no_conflict_offset(i1, blocks);
+            //i2 += no_conflict_offset(i2, blocks);
 
             int t = temp[i1];
             temp[i1] = temp[i2];
@@ -114,10 +101,14 @@ __global__ void prescan(int* d_out, const int* d_in, int blocks) {
     __syncthreads();
     if (cpy_idx == 0) { //переделать из исключающего в включающий
          d_out[255] = sum;
+         for (int j = 0; j < 256; j++) {
+            printf("%d ", temp[j]);
+         }
+         printf("\n|||||||||\n");
     }
     else {
-        if (cpy_idx < 256) {
-            d_out[cpy_idx - 1] = temp[ai + no_conflict_offset(ai, blocks)];   
+        if (cpy_idx < 256) {  
+            d_out[cpy_idx - 1] = temp[ai];
         }
     }
 }
@@ -180,13 +171,14 @@ int main() {
 
     hist<<<32,32>>>(gpu_array, n, gpu_counts);
     CSC(cudaMemcpy(counts, gpu_counts, sizeof(int) * 256, cudaMemcpyDeviceToHost));
-    for (int i = 0; i < 256; i++) {
+    /*for (int i = 0; i < 256; i++) {
         std::cout << counts[i] << " ";
     }
     std::cout << "\n|\n";
+    */
     int pref[256];
 
-    prescan<<<1,128>>>(gpu_pref, gpu_counts, 1);
+    prescan<<<1,256>>>(gpu_pref, gpu_counts, 1);
     CSC(cudaMemcpy(pref, gpu_pref, sizeof(int) * 256, cudaMemcpyDeviceToHost));
     for (int i = 0; i < 256; i++) {
         std::cout << pref[i] << " ";
