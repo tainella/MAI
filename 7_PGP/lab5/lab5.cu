@@ -100,32 +100,46 @@ __global__ void prescan(int* d_out, const int* d_in, int blocks) {
     }
     __syncthreads();
     if (cpy_idx == 0) { //переделать из исключающего в включающий
+        for (int j = 1; j < 256; j++) {
+            d_out[j-1] = temp[j];
+        }
          d_out[255] = sum;
-         for (int j = 0; j < 256; j++) {
+         /*for (int j = 0; j < 256; j++) {
             printf("%d ", temp[j]);
          }
-         printf("\n|||||||||\n");
-    }
-    else {
-        if (cpy_idx < 256) {  
-            d_out[cpy_idx - 1] = temp[ai];
-        }
+         printf("\n|||||||||\n");*/
     }
 }
+
+/*
+__global__ void kernel(int* pref, unsigned char* out) {
+  int prev = 0; 
+  for (int i = blockIdx.x; i < 256; i += gridDim.x) {
+    if (i > 0) {
+      prev = pref[i - 1];
+    }
+
+    if (i == 2) 
+
+    for (int j = pref[i] - 1 - threadIdx.x; j >= prev ; j -= blockDim.x) {
+      out[j] = i;
+    }
+  }
+}
+*/
 
 __global__ void kernel(int* pref, unsigned char* out){
     int idx = blockDim.x * blockIdx.x +  threadIdx.x;
     int step = blockDim.x * gridDim.x;
 
-    for (int tid = idx; tid < 256; tid += step){
+    for(int tid = idx; tid < 256; tid += step){
         int low = tid ? pref[tid-1] : 0;
 
-        for(int i = pref[tid] - 1; i >= low; --i){ //-1
-            out[i] = tid - 1; //-1
+        for(int i = pref[tid] - 1; i >= low; --i){
+            out[i] = tid-1;
         }
     }
 }
-
 
 __global__ void hist(unsigned char* array, int n, int* out) {
     __shared__ int temp[257];
@@ -149,10 +163,9 @@ int main() {
     if (fread(array, sizeof(unsigned char), n, stdin) != n) {
         std::cout << "не считал\n";
     };
-    for (int i = n - 200; i < n; i++) {
+    /*for (int i = n - 200; i < n; i++) {
         printf("%02X ", array[i]);
-    }
-    printf("\n|");
+    }*/
     unsigned char* gpu_array;
     CSC(cudaMalloc(&gpu_array, sizeof(unsigned char) * n));
     CSC(cudaMemcpy(gpu_array, array, sizeof(unsigned char) * n, cudaMemcpyHostToDevice));
@@ -178,24 +191,25 @@ int main() {
     */
     int pref[256];
 
-    prescan<<<1,256>>>(gpu_pref, gpu_counts, 1);
+    prescan<<<1,128>>>(gpu_pref, gpu_counts, 1);
     CSC(cudaMemcpy(pref, gpu_pref, sizeof(int) * 256, cudaMemcpyDeviceToHost));
+    /*std::cout << "pref:\n";
     for (int i = 0; i < 256; i++) {
         std::cout << pref[i] << " ";
     }
-    
+    */
 
     unsigned char* gpu_out;
     CSC(cudaMalloc(&gpu_out, sizeof(unsigned char) * n));
     CSC(cudaMemset(gpu_out, 0, sizeof(unsigned char) * n));
 
-    kernel<<<32,32>>>(gpu_counts, gpu_out);
+    kernel<<<32,32>>>(gpu_pref, gpu_out);
 
-    std::cout << "\n|\n";
+    //std::cout << "\n|\n";
     CSC(cudaMemcpy(array, gpu_out, sizeof(unsigned char) * n, cudaMemcpyDeviceToHost));
-    //fwrite(array, sizeof(unsigned char), n, stdout);
-    for (int i = n - 200; i < n; i++) {
+    fwrite(array, sizeof(unsigned char), n, stdout);
+    /*for (int i = n - 200; i < n; i++) {
         printf("%02X ", array[i]);
-    }
+    }*/
     return 0;
 }
