@@ -53,14 +53,9 @@ __global__ void prescan(int* d_out, const int* d_in, int blocks) {
     
     __syncthreads();
 
-    int cpy_idx =  max_block_size * blockIdx.x + threadIdx.x;
-
-    if (cpy_idx < 256)
-    {
-        //temp[ai + no_conflict_offset(ai, blocks)] = d_in[cpy_idx];
-        temp[ai] = d_in[cpy_idx];
-    }
-
+    temp[ai] = d_in[ai];
+    temp[128 + ai] = d_in[128 + ai];
+    
     int offset = 1;
     for (int d = max_block_size >> 1; d > 0; d >>= 1)
     {
@@ -70,15 +65,13 @@ __global__ void prescan(int* d_out, const int* d_in, int blocks) {
         {
             int ai = offset * ((idx << 1) + 1) - 1;
             int bi = offset * ((idx << 1) + 2) - 1;
-            //ai += no_conflict_offset(ai, blocks);
-            //bi += no_conflict_offset(bi, blocks);
-           // assert(bi < 256);
             temp[bi] += temp[ai];
         }
         offset <<= 1;
     }
     if (idx == 0) { 
         sum = temp[255];
+        //printf("sum:%d\n", sum);
         temp[255] = 0;
     }
     //обратный ход
@@ -90,8 +83,6 @@ __global__ void prescan(int* d_out, const int* d_in, int blocks) {
         {
             int i1 = offset * ((idx << 1) + 1) - 1;
             int i2 = offset * ((idx << 1) + 2) - 1;
-            //i1 += no_conflict_offset(i1, blocks);
-            //i2 += no_conflict_offset(i2, blocks);
 
             int t = temp[i1];
             temp[i1] = temp[i2];
@@ -99,10 +90,11 @@ __global__ void prescan(int* d_out, const int* d_in, int blocks) {
         }
     }
     __syncthreads();
-    if (cpy_idx == 0) { //переделать из исключающего в включающий
+    if (idx == 0) { //переделать из исключающего в включающий
         for (int j = 1; j < 256; j++) {
-            d_out[j-1] = temp[j];
+            d_out[j - 1] = temp[j];
         }
+         //printf("sum2: %d\n", sum);
          d_out[255] = sum;
          /*for (int j = 0; j < 256; j++) {
             printf("%d ", temp[j]);
@@ -110,23 +102,6 @@ __global__ void prescan(int* d_out, const int* d_in, int blocks) {
          printf("\n|||||||||\n");*/
     }
 }
-
-/*
-__global__ void kernel(int* pref, unsigned char* out) {
-  int prev = 0; 
-  for (int i = blockIdx.x; i < 256; i += gridDim.x) {
-    if (i > 0) {
-      prev = pref[i - 1];
-    }
-
-    if (i == 2) 
-
-    for (int j = pref[i] - 1 - threadIdx.x; j >= prev ; j -= blockDim.x) {
-      out[j] = i;
-    }
-  }
-}
-*/
 
 __global__ void kernel(int* pref, unsigned char* out){
     int idx = blockDim.x * blockIdx.x +  threadIdx.x;
@@ -136,7 +111,7 @@ __global__ void kernel(int* pref, unsigned char* out){
         int low = tid ? pref[tid-1] : 0;
 
         for(int i = pref[tid] - 1; i >= low; --i){
-            out[i] = tid-1;
+            out[i] = tid;
         }
     }
 }
@@ -158,13 +133,20 @@ __global__ void hist(unsigned char* array, int n, int* out) {
 
 int main() {
     int n;
+    //std::cin >> n;
     fread(&n, sizeof(int), 1, stdin);
     unsigned char* array = (unsigned char*)malloc(sizeof(unsigned char) * n); //uchar
     if (fread(array, sizeof(unsigned char), n, stdin) != n) {
         std::cout << "не считал\n";
-    };
-    /*for (int i = n - 200; i < n; i++) {
-        printf("%02X ", array[i]);
+    }
+    
+    /*for (int i = 0; i < n; i++) {
+       // std::cin >> array[i];
+       array[i] = 255;
+    }
+    for (int i = 0; i < 10 && i < n; i++) {
+        //printf("%02X ", array[i]);
+        std::cerr << array[i] << " ";
     }*/
     unsigned char* gpu_array;
     CSC(cudaMalloc(&gpu_array, sizeof(unsigned char) * n));
@@ -197,8 +179,7 @@ int main() {
     for (int i = 0; i < 256; i++) {
         std::cout << pref[i] << " ";
     }
-    */
-
+*/
     unsigned char* gpu_out;
     CSC(cudaMalloc(&gpu_out, sizeof(unsigned char) * n));
     CSC(cudaMemset(gpu_out, 0, sizeof(unsigned char) * n));
@@ -206,8 +187,16 @@ int main() {
     kernel<<<32,32>>>(gpu_pref, gpu_out);
 
     //std::cout << "\n|\n";
+    
     CSC(cudaMemcpy(array, gpu_out, sizeof(unsigned char) * n, cudaMemcpyDeviceToHost));
+
+    /*std::cerr << "out:\n";
+    for (int i = 0; i < 10 && i < n; i++) {
+        //printf("%02X ", array[i]);
+        std::cerr << array[i] << "| ";
+    }*/
     fwrite(array, sizeof(unsigned char), n, stdout);
+
     /*for (int i = n - 200; i < n; i++) {
         printf("%02X ", array[i]);
     }*/
