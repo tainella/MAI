@@ -176,7 +176,7 @@ int main(int argc, char **argv) {
     MPI_Bcast(dimens, 3, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(blocks, 3, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(l, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Bcast(u, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(u, 6, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&u0, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&eps, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
