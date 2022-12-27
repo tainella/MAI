@@ -48,7 +48,8 @@ if __name__ == "__main__":
                 buf[idx] /= len(preds)
             it += 1
             print('Predicted: ', ' '.join(f'{classes[torch.argmax(buf)]}'))
-            break
+        for i in range(1, p):
+            comm.send("end", i)
             
     else:
         #загрузить свою модель
@@ -58,8 +59,12 @@ if __name__ == "__main__":
         net.classifier[6] = nn.Linear(num_ftrs, 10)
         net.load_state_dict(torch.load(PATH))
 
-        #получить предсказание по одной картинке
-        image = comm.recv(source = 0)
-        outputs = net(image)
-        comm.send(outputs, dest = 0)
+        while True:
+            #получить предсказание по одной картинке
+            image = comm.recv(source = 0)
+            if image == "end":
+                break
+            outputs = net(image)
+            comm.send(outputs, dest = 0)
     MPI.Finalize
+
