@@ -1,0 +1,13 @@
+@startuml 
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Person(admin, "Администратор")
+Person(moderator, "Модератор")
+Person(user, "Пользователь")
+
+System(conference_site, "Сервис доставки", "Быстрее чем Яндекс")
+
+Rel(admin, conference_site, "Просмотр, добавление и редактирование информации о пользователях, посылках и доставках")
+Rel(moderator, conference_site, "Модерация контента и пользователей")
+Rel(user, conference_site, "Регистрация, просмотр/изменение информации о посылках и доставках")
+@enduml
