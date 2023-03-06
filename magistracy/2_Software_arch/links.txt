@@ -1,0 +1,4 @@
+LAB1
+
+LMS: https://lms.mai.ru/mod/assign/view.php?id=228606&action=view
+Git example: https://github.com/DVDemon/hl_mai_lab_00

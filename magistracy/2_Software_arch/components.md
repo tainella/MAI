@@ -17,27 +17,35 @@ Person(user, "Пользователь")
 
 System_Ext(web_site, "Клиентский веб-сайт", "HTML, CSS, JavaScript, React", "Веб-интерфейс")
 
-System_Boundary(conference_site, "Сайт блогов") {
-   'Container(web_site, "Клиентский веб-сайт", ")
+System_Boundary(conference_site, "Сайт сервиса доставки") {
    Container(client_service, "Сервис авторизации", "C++", "Сервис управления пользователями", $tags = "microService")    
-   Container(post_service, "Сервис постов", "C++", "Сервис управления блогами", $tags = "microService") 
-   Container(blog_service, "Сервис блогов", "C++", "Сервис управления постами", $tags = "microService")   
-   ContainerDb(db, "База данных", "MySQL", "Хранение данных о блогах, постах и пользователях", $tags = "storage")
+   Container(post_service, "Сервис доставок", "C++", "Сервис управления доставками", $tags = "microService") 
+   Container(blog_service, "Сервис посылок", "C++", "Сервис управления посылками", $tags = "microService")
+   Container(error_service, "Сервис мониторинга ошибок", "C++", "Сервис мониторинга ошибок", $tags = "microService")
+   Container(payment_service, "Сервис оплаты", "C++", "Сервис оплаты доставки или иной услуги", $tags = "microService")   
+   ContainerDb(db, "База данных", "MySQL", "Хранение данных о посылках, доставках, оплате и пользователях", $tags = "storage")
    
 }
 
-Rel(admin, web_site, "Просмотр, добавление и редактирование информации о пользователях, конференциях и докладах")
+Rel(admin, web_site, "Просмотр, добавление и редактирование информации о пользователях, посылках и доставках")
 Rel(moderator, web_site, "Модерация контента и пользователей")
-Rel(user, web_site, "Регистрация, просмотр информации о конференциях и докладах и запись на них")
+Rel(user, web_site, "Регистрация, просмотр/изменение информации о посылках и доставках")
 
 Rel(web_site, client_service, "Работа с пользователями", "localhost/person")
 Rel(client_service, db, "INSERT/SELECT/UPDATE", "SQL")
 
-Rel(web_site, post_service, "Работа с постами", "localhost/pres")
+Rel(web_site, post_service, "Работа с доставками", "localhost/deliv")
 Rel(post_service, db, "INSERT/SELECT/UPDATE", "SQL")
 
-Rel(web_site, blog_service, "Работа с блогами", "localhost/conf")
+Rel(web_site, blog_service, "Работа с посылками", "localhost/pack")
 Rel(blog_service, db, "INSERT/SELECT/UPDATE", "SQL")
+
+Rel(web_site, payment_service, "Работа с оплатой доставок", "localhost/payment")
+Rel(payment_service, db, "INSERT/SELECT/UPDATE", "SQL")
+
+Rel(web_site, error_service, "Отслеживание ошибок", "localhost/errors")
+Rel(error_service, db, "INSERT/SELECT/UPDATE", "SQL")
+
 
 @enduml
 ```
