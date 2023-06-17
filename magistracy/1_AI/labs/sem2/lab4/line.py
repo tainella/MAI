@@ -2,34 +2,41 @@
 Модуль для работы с прямыми
 '''
 
-from typing import Tuple
 import numpy as np
 
 class Line():
     def __init__(self, points: np.ndarray) -> None:
-        self. k = None
-        self. b = None
+        self.k = None
+        self.b = None
         self.points = points
 
     def estimate_params(self) -> None:
         points_num = len(self.points)
-        if points_num > 2:
-            raise NotImplementedError
-        elif points_num < 2:
+        if points_num < 2:
             raise ValueError(f"Not enough points. Must be at least 2, but got {points_num}.")
+        elif points_num == 2 or points_num == 5:
+            x_points = [p[0] for p in self.points]
+            y_points = [p[1] for p in self.points]
+            A = np.vstack([x_points, np.ones(len(x_points))]).T
+            self.k, self.b = np.linalg.lstsq(A, y_points, rcond=None)[0]
         else:
-            x1, y1 = self.points[0]
-            x2, y2 = self.points[1]
-            if x2 - x1 == 0:
-                raise ValueError(f"x1 and x2 are equal. Can't find k parameter")
-            else: 
-                self.k = (y2 - y1) / (x2 - x1)
-            self.b = y2 - self.k * x2
+            raise NotImplementedError
 
-    def divide_points(self, points: np.ndarray, eps: float) -> Tuple(np.ndarray, np.ndarray):
+    def distance(self, x, y, mode = 'mse'):
+        if mode == 'mse':
+            return (y - x * self.k - self.b) ** 2
+        else:
+            return()
+
+    def divide_points(self, points: np.ndarray, eps: float, mode = 'mse') -> tuple:
         '''
         Разделение массива points на inliers и outliers
         '''
-
-        
-        pass
+        inliers = []
+        outliers = []
+        for p in points:
+            if self.distance(p[0], p[1], mode = mode) < eps:
+                inliers.append(p)
+            else:
+                outliers.append(p)
+        return (inliers, outliers)

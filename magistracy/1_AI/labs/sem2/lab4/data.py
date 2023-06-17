@@ -20,7 +20,7 @@ class Point_Generator():
         """
 
         if k is None:
-            k = p.random.uniform(-1, 1)
+            k = np.random.uniform(-1, 1)
         
         if b is None:
             b = np.random.uniform(0, 5)
